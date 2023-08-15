@@ -222,6 +222,8 @@ def test(eval_set, epoch=0, write_tboard=False):
         tf = transforms.Compose([transforms.ToTensor()])
         img = tf(img)
         input_img = transforms.ToPILImage()(img)
+        if not exists('prediction/' + eval_set.dataset):
+            makedirs('prediction/' + eval_set.dataset)
         if eval_set.dataset == 'gazebo':
             # @ TODO Gazebo 사용으로 인한 경로 변경
             input_img.save("prediction/" + eval_set.dataset + "/input_" + str(eval_set.dbStruct.qImage[0][-18:-4]) + ".png")
