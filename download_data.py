@@ -21,9 +21,16 @@ def extract_Zip(zip_path, output_path):
         file.extractall(path=output_path)
         print("Successful extraction " + zip_path + " data")
 
+def makeDirs(dir_path):
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+    else:
+        print('already exist ' + dir_path + ' directory')
+
 if __name__ == "__main__":
     google_path = 'https://drive.google.com/uc?id='
-    save_folder = "./data/NIA/"
+    data_folder = "./data/NIA/"
+    makeDirs(data_folder)
 
     camera_zip_id = '1wMMvq1SGyt_gEvlfA9u9eTpHiz_VmIru'
     camera_zip = 'camera.zip'
@@ -34,10 +41,10 @@ if __name__ == "__main__":
     csv_zip_id = '1HDFKOohrLOkRLGCBqxwe4EFtTZECASO9'
     csv_zip = 'csv.zip'
 
-    download_Zip(google_path+camera_zip_id, save_folder+camera_zip)
-    download_Zip(google_path+lidar_zip_id, save_folder+lidar_zip)
-    download_Zip(google_path+csv_zip_id, save_folder+csv_zip)
+    download_Zip(google_path+camera_zip_id, data_folder+camera_zip)
+    download_Zip(google_path+lidar_zip_id, data_folder+lidar_zip)
+    download_Zip(google_path+csv_zip_id, data_folder+csv_zip)
     
-    extract_Zip(save_folder+camera_zip, save_folder)
-    extract_Zip(save_folder+lidar_zip, save_folder)
-    extract_Zip(save_folder+csv_zip, save_folder)
+    extract_Zip(data_folder+camera_zip, data_folder)
+    extract_Zip(data_folder+lidar_zip, data_folder)
+    extract_Zip(data_folder+csv_zip, data_folder)
