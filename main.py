@@ -22,9 +22,8 @@ import h5py
 import faiss
 
 import Struct as s
-import icp_pcl as icp
 import custom as dataset
-import opticalFlow as OF
+from pose_estimation import PoseEstimation
 
 from tensorboardX import SummaryWriter
 import numpy as np
@@ -232,8 +231,7 @@ def test(eval_set, epoch=0, write_tboard=False):
         elif eval_set.dataset == 'iiclab':
             input_img.save("prediction/" + eval_set.dataset + "/input_" + str(eval_set.dbStruct.qImage[0][-18:-4]) + ".png")
 
-    camera_T = OF.CameraT(input_Struct.get(), eval_set.dataset)
-    lidar_T = icp.LiDART(input_Struct.get(), eval_set.dataset)
+    pe = PoseEstimation(input_Struct.get(), eval_set.dataset)
 
     # print('====> Calculating recall @ N')
     n_values = [1] # 해당 값이 이미지 출력 개수와 동일
@@ -285,8 +283,9 @@ def test(eval_set, epoch=0, write_tboard=False):
             gt_y = input_Struct.get()[0][2] # 입력 데이터의 groundtruth y
             gt_theta = input_Struct.get()[0][3] # 입력 데이터의 groundtruth theta
             # opticalFlow, icp에 대한 반환값 받기
-            image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c = camera_T.opticalFlow(output) # return image_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
-            lidar_db, est_x_l, est_y_l, est_theta_l, diff_x_l, diff_y_l, diff_theta_l = lidar_T.icp(output) # return lidar_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
+            image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c = pe.fivePointRANSAC(output) # return image_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
+            # image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c = camera_T.opticalFlow(output) # return image_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
+            lidar_db, est_x_l, est_y_l, est_theta_l, diff_x_l, diff_y_l, diff_theta_l = pe.icp(output) # return lidar_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
             data = np.array([t_stamp, image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c, lidar_db, est_x_l, est_y_l, est_theta_l, diff_x_l, diff_y_l, diff_theta_l])
             final_data.append(data)
         float_cols = [5,6,7,12,13,14]
