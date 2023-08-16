@@ -208,14 +208,14 @@ class WholeDatasetFromStruct(data.Dataset):
     def __len__(self):
         return len(self.images)
 
-    def getPositives(self):
+    def getPositives(self, idx):
         # positives for evaluation are those within trivial threshold range
         #fit NN to find them, search by radius
+        self.positives = None
         if  self.positives is None:
             knn = NearestNeighbors(n_jobs=-1)
             knn.fit(self.dbStruct.utmDb)
-
-            self.distances, self.positives = knn.radius_neighbors(self.dbStruct.utmQ,
+            self.distances, self.positives = knn.radius_neighbors([self.dbStruct.utmQ[idx]],
                     radius=self.dbStruct.posDistThr)
         return self.positives
 
