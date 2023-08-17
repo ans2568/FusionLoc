@@ -1,14 +1,13 @@
 from __future__ import print_function
 import argparse
 import random
-import matplotlib.pyplot as plt
 from os import makedirs
 from os.path import join, exists, isfile
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
 from PIL import Image
