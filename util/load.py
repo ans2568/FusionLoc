@@ -2,6 +2,7 @@ import torch
 import torchvision.transforms as transforms
 import torch.utils.data as data
 
+import os
 from os.path import join, exists
 import numpy as np
 from collections import namedtuple
@@ -10,6 +11,13 @@ import pandas as pd
 
 from sklearn.neighbors import NearestNeighbors
 import h5py
+
+def loadFeature(file='feature/dbFeature.npy'):
+    if not os.path.exists(file):
+        print(file + ' not found')
+        return
+    dbFeat = np.load(file)
+    return dbFeat
 
 root_dir = 'data/NIA/'
 if not exists(root_dir):
@@ -56,6 +64,18 @@ def get_gazebo_whole_test_set():
     return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
                              input_transform=input_transform(), dataset='gazebo')
 
+def get_gazebo_DB_test_set():
+    dbFile = join(gz_struct_dir, 'test_db_data_reduce.csv')
+    queryFile = join(gz_struct_dir, 'test_query_one_data.csv')
+    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
+                             input_transform=input_transform(), dataset='gazebo', onlyDB=True)
+
+def get_gazebo_Query_test_set():
+    dbFile = join(gz_struct_dir, 'test_db_data_reduce.csv')
+    queryFile = join(gz_struct_dir, 'test_query_one_data.csv')
+    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
+                             input_transform=input_transform(), dataset='gazebo', onlyQuery=True)
+
 def get_gazebo_whole_val_set():
     dbFile = join(gz_struct_dir, 'val_db_data.csv')
     queryFile = join(gz_struct_dir, 'val_query_data.csv')
@@ -83,6 +103,18 @@ def get_iiclab_whole_test_set():
     return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
                              input_transform=input_transform(), dataset='iiclab')
 
+def get_iiclab_DB_test_set():
+    dbFile = join(iic_struct_dir, 'test_db_data.csv')
+    queryFile = join(iic_struct_dir, 'test_query_one_data.csv')
+    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
+                             input_transform=input_transform(), dataset='iiclab', onlyDB=True)
+
+def get_iiclab_Query_test_set():
+    dbFile = join(iic_struct_dir, 'test_db_data.csv')
+    queryFile = join(iic_struct_dir, 'test_query_one_data.csv')
+    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
+                             input_transform=input_transform(), dataset='iiclab', onlyQuery=True)
+
 def get_iiclab_whole_val_set():
     dbFile = join(iic_struct_dir, 'val_db_data.csv')
     queryFile = join(iic_struct_dir, 'val_query_data.csv')
@@ -102,6 +134,18 @@ def get_whole_training_set(onlyDB=False): # 학습할 때 사용하는 전체 �
     return WholeDatasetFromStruct(dbFile, queryFile,
                              input_transform=input_transform(),
                              onlyDB=onlyDB)
+
+def get_DB_test_set():
+    dbFile = join(struct_dir, 'test_db_data.csv')
+    queryFile = join(struct_dir, 'test_query_data.csv')
+    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
+                             input_transform=input_transform(), onlyDB=True)
+
+def get_Query_test_set():
+    dbFile = join(struct_dir, 'test_db_data.csv')
+    queryFile = join(struct_dir, 'test_query_data.csv')
+    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
+                             input_transform=input_transform(), onlyQuery=True)
 
 def get_whole_test_set():
     dbFile = join(struct_dir, 'test_db_data.csv')
@@ -157,27 +201,44 @@ def parse_dbStruct(db_path, query_path, dataset):
             posDistSqThr, nonTrivPosDistSqThr)
 
 class WholeDatasetFromStruct(data.Dataset):
-    def __init__(self, dbCSVFile, queryCSVFile, input_transform=None, onlyDB=False, dataset='NIA'):
+    def __init__(self, dbCSVFile, queryCSVFile, input_transform=None, onlyDB=False, dataset='NIA', onlyQuery=False):
         super().__init__()
 
         self.input_transform = input_transform
 
         self.dbStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset)
+        self.queryStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset)
         if dataset == 'gazebo':
-            self.images = [join(gz_queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
-            if not onlyDB:
-                self.images += [join(gz_queries_dir, qIm[1:]) for qIm in self.dbStruct.qImage]
+            if onlyQuery:
+                self.images = [join(gz_queries_dir, qIm[1:]) for qIm in self.queryStruct.qImage]
+                self.images += [join(gz_queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
+            else:
+                self.images = [join(gz_queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
+                if not onlyDB:
+                    self.images += [join(gz_queries_dir, qIm[1:]) for qIm in self.dbStruct.qImage]
         elif dataset == 'NIA':
-            self.images = [join(queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
-            if not onlyDB:
-                self.images += [join(queries_dir, qIm[1:]) for qIm in self.dbStruct.qImage]
+            if onlyQuery:
+                self.images = [join(queries_dir, qIm[1:]) for qIm in self.queryStruct.qImage]
+                self.images += [join(queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
+            else:
+                self.images = [join(queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
+                if not onlyDB:
+                    self.images += [join(queries_dir, qIm[1:]) for qIm in self.dbStruct.qImage]
         elif dataset == 'iiclab':
-            self.images = [join(iic_queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
-            if not onlyDB:
-                self.images += [join(iic_queries_dir, qIm[:]) for qIm in self.dbStruct.qImage]
+            if onlyQuery:
+                self.images = [join(iic_queries_dir, qIm[:]) for qIm in self.queryStruct.qImage]
+                self.images += [join(iic_queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
+            else:
+                self.images = [join(iic_queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
+                if not onlyDB:
+                    self.images += [join(iic_queries_dir, qIm[:]) for qIm in self.dbStruct.qImage]
 
-        self.whichSet = self.dbStruct.whichSet
-        self.dataset = self.dbStruct.dataset
+        if onlyQuery:
+            self.whichSet = self.queryStruct.whichSet
+            self.dataset = self.queryStruct.dataset
+        else:
+            self.whichSet = self.dbStruct.whichSet
+            self.dataset = self.dbStruct.dataset
 
         self.positives = None
         self.distances = None

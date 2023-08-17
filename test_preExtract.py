@@ -8,7 +8,7 @@ from os.path import join, exists, isfile
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 import torchvision.transforms as transforms
 
 from PIL import Image
@@ -16,12 +16,13 @@ import torchvision.models as models
 import h5py
 import faiss
 
-import csv
-import time
 from Struct import Struct
 import util.load as dataset
+from util.load import loadFeature
 from pose_estimation import PoseEstimation
 
+import csv
+import time
 import numpy as np
 import netvlad
 
@@ -49,27 +50,29 @@ def test(eval_set):
 
     model.eval()
     loading_time = time.time()
+    dbFeat = np.array(loadFeature('feature/dbFeature.npy'), dtype=np.float32)
     with torch.no_grad():
         print('====> Extracting Features')
         pool_size = encoder_dim
         pool_size *= opt.num_clusters
-        dbFeat = np.empty((len(eval_set), pool_size))
+        qFeat = np.empty((len(eval_set.dbStruct.qImage), pool_size))
         for input, indices in test_data_loader:
+            if indices == len(eval_set.dbStruct.qImage):
+                break
             input = input.to(device)
             image_encoding = model.encoder(input)
             vlad_encoding = model.pool(image_encoding)
-            dbFeat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy()
+            qFeat[indices.detach().numpy(), :] = vlad_encoding.detach().cpu().numpy()
 
             del input, image_encoding, vlad_encoding
     del test_data_loader
 
     end_loading_time = time.time()
     loading_elapsed_time = (end_loading_time-loading_time)*1000 # milliseconds
-    print('Total time taken : ' + str(loading_elapsed_time) + 'ms')
+    print('Query Image Feature Extraction time taken : ' + str(loading_elapsed_time) + 'ms')
 
     # extracted for both db and query, now split in own sets
-    qFeat = dbFeat[eval_set.dbStruct.numDb:].astype('float32')
-    dbFeat = dbFeat[:eval_set.dbStruct.numDb].astype('float32')
+    qFeat = qFeat[:].astype('float32')
     faiss_index = faiss.IndexFlatL2(pool_size)
     faiss_index.add(dbFeat)
 
@@ -224,11 +227,11 @@ if __name__ == "__main__":
 
     print('===> Loading dataset(s)')
     if opt.dataset == 'gazebo':
-        whole_test_set = dataset.get_gazebo_whole_test_set()
+        whole_test_set = dataset.get_gazebo_Query_test_set()
     elif opt.dataset == 'NIA':
-        whole_test_set = dataset.get_whole_test_set()
+        whole_test_set = dataset.get_Query_test_set()
     elif opt.dataset == 'iiclab':
-        whole_test_set = dataset.get_iiclab_whole_test_set()
+        whole_test_set = dataset.get_iiclab_Query_test_set()
     print('===> Evaluating on test set')
     print('====> Query count:', whole_test_set.dbStruct.numQ)
     print('===> Building model')
@@ -306,7 +309,6 @@ if __name__ == "__main__":
             print("=> no checkpoint found at '{}'".format(resume_ckpt))
 
     test(whole_test_set)
-    # @TODO 여기 부분에 추가해야함
 
     end_time = time.time()
     elapsed_time = (end_time-start_time)*1000 # milliseconds
