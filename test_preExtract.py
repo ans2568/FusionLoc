@@ -29,7 +29,7 @@ parser = argparse.ArgumentParser(description='Initial Pose Estimation using NetV
 parser.add_argument('--cacheBatchSize', type=int, default=1, help='Batch size for caching and testing')
 parser.add_argument('--nGPU', type=int, default=1, help='number of GPU to use.')
 parser.add_argument('--nocuda', action='store_true', help='Dont use cuda')
-parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
+parser.add_argument('--threads', type=int, default=1, help='Number of threads for each data loader to use')
 parser.add_argument('--seed', type=int, default=123, help='Random seed to use.')
 parser.add_argument('--dataPath', type=str, default='dataPath/', help='Path for centroid data.')
 parser.add_argument('--resume', type=str, default='', help='Path to load checkpoint from, for resuming training or testing.')
@@ -56,7 +56,7 @@ def test(eval_set):
         pool_size *= opt.num_clusters
         qFeat = np.empty((len(eval_set.dbStruct.qImage), pool_size))
         for input, indices in test_data_loader:
-            if indices == len(eval_set.dbStruct.qImage):
+            if indices.detach().numpy()[0] == len(eval_set.dbStruct.qImage):
                 break
             input = input.to(device)
             image_encoding = model.encoder(input)

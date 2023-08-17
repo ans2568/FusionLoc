@@ -203,6 +203,7 @@ def parse_dbStruct(db_path, query_path, dataset):
 class WholeDatasetFromStruct(data.Dataset):
     def __init__(self, dbCSVFile, queryCSVFile, input_transform=None, onlyDB=False, dataset='NIA', onlyQuery=False):
         super().__init__()
+        self.onlyQuery = onlyQuery
 
         self.input_transform = input_transform
 
@@ -210,24 +211,24 @@ class WholeDatasetFromStruct(data.Dataset):
         self.queryStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset)
         if dataset == 'gazebo':
             if onlyQuery:
-                self.images = [join(gz_queries_dir, qIm[1:]) for qIm in self.queryStruct.qImage]
-                self.images += [join(gz_queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
+                self.images = [join(gz_queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
+                self.images += [join(gz_queries_dir, qIm[1:]) for qIm in self.queryStruct.qImage]
             else:
                 self.images = [join(gz_queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
                 if not onlyDB:
                     self.images += [join(gz_queries_dir, qIm[1:]) for qIm in self.dbStruct.qImage]
         elif dataset == 'NIA':
             if onlyQuery:
-                self.images = [join(queries_dir, qIm[1:]) for qIm in self.queryStruct.qImage]
-                self.images += [join(queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
+                self.images = [join(queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
+                self.images += [join(queries_dir, qIm[1:]) for qIm in self.queryStruct.qImage]
             else:
                 self.images = [join(queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
                 if not onlyDB:
                     self.images += [join(queries_dir, qIm[1:]) for qIm in self.dbStruct.qImage]
         elif dataset == 'iiclab':
             if onlyQuery:
-                self.images = [join(iic_queries_dir, qIm[:]) for qIm in self.queryStruct.qImage]
-                self.images += [join(iic_queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
+                self.images = [join(iic_queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
+                self.images += [join(iic_queries_dir, qIm[:]) for qIm in self.queryStruct.qImage]
             else:
                 self.images = [join(iic_queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
                 if not onlyDB:
@@ -244,7 +245,13 @@ class WholeDatasetFromStruct(data.Dataset):
         self.distances = None
 
     def __getitem__(self, index):
-        img = Image.open(self.images[index])
+        if self.onlyQuery:
+            if index == len(self.dbStruct.qImage):
+                img = torch.empty(0)
+                return img, index
+            img = Image.open(self.images[index + len(self.dbStruct.dbImage)])
+        else:
+            img = Image.open(self.images[index])
 
         if self.input_transform:
             img = self.input_transform(img)
