@@ -11,7 +11,7 @@
   - 추후 sensor_msgs/msg/PointCloud2 지원 예정
 - 위치 토픽(nav_msgs/msg/Odometry)
   - default : /odom
-
+---
 ### 데이터 셋 만드는 법
 ```
 python bag2csv.py --bag /path/to/ros2_ws/bag/data.bag \ 
@@ -22,3 +22,8 @@ python bag2csv.py --bag /path/to/ros2_ws/bag/data.bag \
 --lidarTopic /scan \
 --odometryTopic /odom
 ```
+---
+### 순서
+1. ros2 bag cli로 bag 파일 생성
+2. bag2csv.py 실행
+3. 아키텍쳐에 활용할 csv 파일 및 이미지, PCD 파일 생성
