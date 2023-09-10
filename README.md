@@ -1,4 +1,4 @@
-# 지도가 주어진 상태에서 로봇의 포즈 추정
+# 영상 및 라이다 기반 로봇의 초기 포즈 추정
 
 ## Dataset
 `NIA_dataset`
@@ -29,27 +29,18 @@ LiDAR
 
 csv
 - timestamp, GT_pose_x, GT_pose_y, GT_pose_theta, image_path, lidar_path
+  - `추후 이름 변경 예정`
 
 # Usage
 
-`main_custom.py` 파일은 train, test, cluster 모드를 전부 포함한 파일로 --mode=[`train`, `test`, `cluster`]에 따라 실행이 달라짐
+`scripts/train.py` 파일은 NetVLAD 학습 시 사용하는 파일로 --dataset 설정 필요
 
-새로운 데이터 셋 추가 시 코드 수정이 필요함
-- `opticalFlow.py`, `icp_pcl.py`, `Struct.py`, `custom.py` 파일들에 경로 추가 및 `--dataset`에 추가
-
-## ros2bag to csv
-
-bag 파일을 읽어와 csv 파일로 만들고, 각 timestamp에 맞는 이미지와 LiDAR 데이터를 저장
-
-bag 파일의 경로는 직접 파일 내부에서 수정(`bag2csv.py`)
-
-```bash
-python bag2csv.py
-```
+**새로운 데이터 셋 추가 시 코드 수정이 필요함**
+- `scripts/pose_estimation.py`, `scripts/Struct.py`, `util/load.py` 파일들에 경로 추가 및 `--dataset`에 추가
+    - 추후 ArgumentParser로 실행 시 argument로 변경 예정
 
 ## CLI args
 
-- `--mode` : train, test, cluster 중 선택(default : train)
 - `--batchSize` : Number of triplets (query, positive, negatives) 각 triplet은 12개의 이미지를 포함
 - `--cacheBatchSize` : 배치 사이즈
 - `--cacheRefreshRate` : How often to refresh cache
@@ -74,50 +65,39 @@ python bag2csv.py
 - `--split` : test 시 사용할 데이터 셋 (default : val) [`test`, `train`, `val`]
 - `--dataset` : NIA 데이터 셋을 사용할 것인지 gazebo 데이터 셋을 사용할 것인지 (default : `NIA`) [`NIA`, `gazebo`]
 
+---
+## 학습 및 테스트
 
-## Train
+### Cluster
 
-학습을 진행하려면 먼저 --mode=cluster 모드로 hdf5 파일을 생성시킨 후 진행해야함
-
-```bash
-python main_custom.py --mode=train --savePath=custom_checkpoint/checkpoint --cacheBatchSize=10 --cacheRefreshRate=0 --threads=4 --dataset=gazebo
-```
-
-## Test
-
-`--resume`는 옵션
+**학습을 진행하기에 앞서 hdf5 파일 생성이 필요**
 
 ```bash
-python main_custom.py --mode=test --split=test --resume=/root/wip/pytorch-NetVlad/runsPath/Apr22_17-03-05_vgg16_netvlad/custom_checkpoint/ --dataset=gazebo
+python scripts/cluster.py --dataset=NIA
 ```
 
-## Cluster
+### Train
+
+cluster.py 진행 후 NetVLAD 학습 진행
 
 ```bash
-python main_custom.py --mode=cluster --arch=vgg16 --pooling=netvlad --num_clusters=64 --dataset=gazebo
+python scripts/train.py --dataset=NIA
 ```
 
-## ROS2 bag file
-gazebo 시뮬레이션을 활용하여 데이터 셋을 구축 시 ros2 bag을 활용한 토픽 메세지 녹화
+### Test
+
+`--resume : train.py로 학습된 가중치 파일의 checkpoints 경로`
 
 ```bash
-ros2 bag record -a -o data.bag
+python scripts/test.py --split=test --resume=runsPath/Apr22_17-03-05_vgg16_netvlad/ --dataset=NIA
 ```
 
-녹화된 bag 파일을 읽어와 csv 파일로 변환
+**Note : 만약, DB 특징을 미리 추출하고 Test를 진행하고 싶은 경우 다음과 같이 진행**
 
 ```bash
-python3 bag2csv.py
+# extract pre-build map feature
+python util/saveDBFeature.py --resume=runsPath/Aug21_09-46-30_vgg16_netvlad/ --dataset=NIA
+
+# test by using pre-built map feature
+python scripts/test_preExtract.py --resume=runsPath/Aug21_09-46-30_vgg16_netvlad/ --dataset=NIA
 ```
-
-csv 파일에서 같은 timestamp 끼리 그룹화 및 필요한 데이터가 없는 행의 경우 삭제시켜서 완전한 데이터 셋을 만드는 파이썬 파일
-
-```bash
-python3 synchronize.py
-```
-
-순서
-1. ros2 bag cli로 bag 파일 생성
-2. bag2csv.py 실행
-3. synchronize.py 실행
-4. 아키텍쳐에 활용할 csv 파일 및 이미지, PCD 파일 생성

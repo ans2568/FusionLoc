@@ -1,13 +1,11 @@
 from __future__ import print_function
 import argparse
 import random
-import matplotlib.pyplot as plt
 from os import makedirs
 from os.path import join, exists, isfile
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
@@ -18,12 +16,12 @@ import faiss
 
 import csv
 import time
-from scripts.Struct import Struct
+from Struct import Struct
 import util.load as dataset
-from scripts.pose_estimation import PoseEstimation
+from pose_estimation import PoseEstimation
 
 import numpy as np
-import scripts.netvlad as netvlad
+import netvlad as netvlad
 
 parser = argparse.ArgumentParser(description='Initial Pose Estimation using NetVLAD')
 parser.add_argument('--cacheBatchSize', type=int, default=1, help='Batch size for caching and testing')
@@ -174,36 +172,6 @@ def test(eval_set):
                     csv_writer = csv.writer(file)
                     csv_writer.writerow(result)
             print('result.csv complete! check result.csv')
-
-        # 3D 산점도
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111, projection='3d')
-        # ax.scatter(est_final_x, est_final_y, est_final_theta, marker='o', c='#ff7f0e', label='estimated final pose')
-        # ax.scatter(gt_x, gt_y, gt_theta, marker='^', c='#2ca02c', label = 'groundtruth pose')
-        # ax.scatter(es_x, es_y, es_theta, marker='o', c='#000000', label='estimated pose')
-        # ax.set_xlim3d(est_final_x - 5, est_final_x + 5)
-        # ax.set_ylim3d(est_final_y - 5, est_final_y + 5)
-        # ax.set_zlim3d(est_final_theta - 5, est_final_theta + 5)
-
-        # ax.set_xlabel('x position(cm)')
-        # ax.set_ylabel('y position(cm)')
-        # ax.set_zlabel('theta angle(radian)')
-        # ax.legend()
-        # plt.title('Pose Distribution')
-
-        # plt.show()
-
-class Flatten(nn.Module):
-    def forward(self, input):
-        return input.view(input.size(0), -1)
-
-class L2Norm(nn.Module):
-    def __init__(self, dim=1):
-        super().__init__()
-        self.dim = dim
-
-    def forward(self, input):
-        return F.normalize(input, p=2, dim=self.dim)
 
 if __name__ == "__main__":
     start_time = time.time()

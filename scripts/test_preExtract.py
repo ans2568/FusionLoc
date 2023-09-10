@@ -194,18 +194,6 @@ def test(eval_set):
                     csv_writer.writerow(result)
             print("Check the experiment results in the " + result_filename)
 
-class Flatten(nn.Module):
-    def forward(self, input):
-        return input.view(input.size(0), -1)
-
-class L2Norm(nn.Module):
-    def __init__(self, dim=1):
-        super().__init__()
-        self.dim = dim
-
-    def forward(self, input):
-        return F.normalize(input, p=2, dim=self.dim)
-
 if __name__ == "__main__":
     start_time = time.time()
     opt = parser.parse_args()
