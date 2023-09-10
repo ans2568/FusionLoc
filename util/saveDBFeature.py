@@ -14,7 +14,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 import load as dataset
 import numpy as np
-import netvlad
+import scripts.netvlad as netvlad
 
 parser = argparse.ArgumentParser(description='Extracting DB Feature')
 parser.add_argument('--cacheBatchSize', type=int, default=1, help='Batch size for caching and testing')
@@ -23,8 +23,7 @@ parser.add_argument('--nocuda', action='store_true', help='Dont use cuda')
 parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 parser.add_argument('--seed', type=int, default=123, help='Random seed to use.')
 parser.add_argument('--resume', type=str, default='', help='Path to load checkpoint from, for resuming training or testing.')
-parser.add_argument('--ckpt', type=str, default='latest', 
-        help='Resume from latest or best checkpoint.', choices=['latest', 'best'])
+parser.add_argument('--ckpt', type=str, default='latest', help='Resume from latest or best checkpoint.', choices=['latest', 'best'])
 parser.add_argument('--vladv2', action='store_true', help='Use VLAD v2')
 parser.add_argument('--num_clusters', type=int, default=64, help='Number of NetVlad clusters. Default=64')
 parser.add_argument('--fromscratch', action='store_true', help='Train from scratch rather than using pretrained models')
@@ -48,7 +47,7 @@ def saveFeature(eval_set):
 
             del input, image_encoding, vlad_encoding
     del test_data_loader
-    np.save('feature/dbFeature_' + opt.dataset, dbFeat)
+    np.save('../feature/dbFeature_' + opt.dataset, dbFeat)
     print('Save DB Feature successfully')
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ import cv2
 import time
 import numpy as np
 import open3d as o3d
-from rootsift import RootSIFT
+from scripts.rootsift import RootSIFT
 
 # default_path는 경로에 따라 변경 필요
 
@@ -16,14 +16,14 @@ def to2Dcloud(points):
 class PoseEstimation:
     def __init__(self, inputStruct, outputStruct, dataset):
         if dataset == 'gazebo':
-            self.image_path = 'data/gazebo_dataset/camera/'
-            self.lidar_path = 'data/gazebo_dataset/lidar/'
+            self.image_path = '../data/gazebo_dataset/camera/'
+            self.lidar_path = '../data/gazebo_dataset/lidar/'
         elif dataset == 'NIA':
-            self.image_path = 'data/NIA/camera/'
-            self.lidar_path = 'data/NIA/lidar/'
+            self.image_path = '../data/NIA/camera/'
+            self.lidar_path = '../data/NIA/lidar/'
         elif dataset == 'iiclab':
-            self.image_path = 'data/iiclab_real/camera/'
-            self.lidar_path = 'data/iiclab_real/lidar/'
+            self.image_path = '../data/iiclab_real/camera/'
+            self.lidar_path = '../data/iiclab_real/lidar/'
         # inputStruct는 2차원 배열
         # [time, gt_x, gt_y, gt_theta, image_path, lidar_path]
         self.image_Query = self.image_path + inputStruct[0][0] + '.png'

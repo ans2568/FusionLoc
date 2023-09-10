@@ -12,13 +12,13 @@ import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 import h5py
 
-def loadFeature(file='feature/dbFeature.npy'):
+def loadFeature(file='../feature/dbFeature.npy'):
     if not os.path.exists(file):
         raise FileNotFoundError(file + ' not found')
     dbFeat = np.load(file)
     return dbFeat
 
-root_dir = 'data/NIA/'
+root_dir = '../data/NIA/'
 if not exists(root_dir):
     raise FileNotFoundError(root_dir + ' is hardcoded, please adjust to point to custom dataset')
 
@@ -26,14 +26,14 @@ struct_dir = join(root_dir, 'csv')
 queries_dir = root_dir
 
 
-gz_root_dir = 'data/gazebo_dataset/'
+gz_root_dir = '../data/gazebo_dataset/'
 if not exists(gz_root_dir):
     raise FileNotFoundError(gz_root_dir + ' is hardcoded, please adjust to point to custom dataset')
 
 gz_struct_dir = join(gz_root_dir, 'csv')
 gz_queries_dir = gz_root_dir
 
-iic_dir = 'data/iiclab_real/'
+iic_dir = '../data/iiclab_real/'
 if not exists(iic_dir):
     raise FileNotFoundError(iic_dir + ' is hardcoded, please adjust to point to custom dataset')
 

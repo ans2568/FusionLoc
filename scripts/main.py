@@ -21,13 +21,13 @@ import torchvision.models as models
 import h5py
 import faiss
 
-import Struct as s
+import scripts.Struct as s
 import util.load as dataset
-from pose_estimation import PoseEstimation
+from scripts.pose_estimation import PoseEstimation
 
 from tensorboardX import SummaryWriter
 import numpy as np
-import netvlad
+import scripts.netvlad as netvlad
 
 parser = argparse.ArgumentParser(description='Initial Pose Estimation using NetVLAD')
 parser.add_argument('--mode', type=str, default='train', help='Mode', choices=['train', 'test', 'cluster'])
@@ -49,11 +49,11 @@ parser.add_argument('--momentum', type=float, default=0.9, help='Momentum for SG
 parser.add_argument('--nocuda', action='store_true', help='Dont use cuda')
 parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 parser.add_argument('--seed', type=int, default=123, help='Random seed to use.')
-parser.add_argument('--dataPath', type=str, default='dataPath/', help='Path for centroid data.')
-parser.add_argument('--runsPath', type=str, default='runsPath/', help='Path to save runs to.')
-parser.add_argument('--savePath', type=str, default='checkpoints', 
+parser.add_argument('--dataPath', type=str, default='../dataPath/', help='Path for centroid data.')
+parser.add_argument('--runsPath', type=str, default='../runsPath/', help='Path to save runs to.')
+parser.add_argument('--savePath', type=str, default='../checkpoints', 
         help='Path to save checkpoints to in logdir. Default=checkpoints/')
-parser.add_argument('--cachePath', type=str, default='cache/', help='Path to save cache to.')
+parser.add_argument('--cachePath', type=str, default='../cache/', help='Path to save cache to.')
 parser.add_argument('--resume', type=str, default='', help='Path to load checkpoint from, for resuming training or testing.')
 parser.add_argument('--ckpt', type=str, default='latest', 
         help='Resume from latest or best checkpoint.', choices=['latest', 'best'])
@@ -206,28 +206,28 @@ def test(eval_set, epoch=0, write_tboard=False):
     if opt.mode.lower() != 'train':
         if eval_set.dataset == 'gazebo':
             # @ TODO Gazebo 사용으로 인한 경로 변경
-            path = 'data/gazebo_dataset'
+            path = '../data/gazebo_dataset'
             input_Struct.append(eval_set.dbStruct.qImage[0][-18:-4])
         elif eval_set.dataset == 'NIA':
-            path = 'data/NIA'
+            path = '../data/NIA'
             input_Struct.append(eval_set.dbStruct.qImage[0][-22:-4])
         elif eval_set.dataset == 'iiclab':
-            path = 'data/iiclab_real/'
+            path = '../data/iiclab_real/'
             input_Struct.append(eval_set.dbStruct.qImage[0][-18:-4])
         input_img = path + eval_set.dbStruct.qImage[0]
         img = Image.open(input_img)
         tf = transforms.Compose([transforms.ToTensor()])
         img = tf(img)
         input_img = transforms.ToPILImage()(img)
-        if not exists('prediction/' + eval_set.dataset):
-            makedirs('prediction/' + eval_set.dataset)
+        if not exists('../prediction/' + eval_set.dataset):
+            makedirs('../prediction/' + eval_set.dataset)
         if eval_set.dataset == 'gazebo':
             # @ TODO Gazebo 사용으로 인한 경로 변경
-            input_img.save("prediction/" + eval_set.dataset + "/input_" + str(eval_set.dbStruct.qImage[0][-18:-4]) + ".png")
+            input_img.save("../prediction/" + eval_set.dataset + "/input_" + str(eval_set.dbStruct.qImage[0][-18:-4]) + ".png")
         elif eval_set.dataset == 'NIA':
-            input_img.save("prediction/" + eval_set.dataset + "/input_" + str(eval_set.dbStruct.qImage[0][-22:-4]) + ".png")
+            input_img.save("../prediction/" + eval_set.dataset + "/input_" + str(eval_set.dbStruct.qImage[0][-22:-4]) + ".png")
         elif eval_set.dataset == 'iiclab':
-            input_img.save("prediction/" + eval_set.dataset + "/input_" + str(eval_set.dbStruct.qImage[0][-18:-4]) + ".png")
+            input_img.save("../prediction/" + eval_set.dataset + "/input_" + str(eval_set.dbStruct.qImage[0][-18:-4]) + ".png")
 
         pe = PoseEstimation(input_Struct.get(), eval_set.dataset)
 
@@ -249,7 +249,7 @@ def test(eval_set, epoch=0, write_tboard=False):
                     img, timestamp = eval_set.get(index)
                     if opt.mode.lower() != 'train':
                         output = transforms.ToPILImage()(img)
-                        output.save("prediction/" + eval_set.dataset + "/output_" + str(timestamp) + "_" + str(index) + ".png")
+                        output.save("../prediction/" + eval_set.dataset + "/output_" + str(timestamp) + "_" + str(index) + ".png")
                         output_Struct.append(timestamp=timestamp)
                 break
     # # output_Struct에 있는 내용마다 OpticalFlow 진행(현재 20개)
@@ -306,7 +306,7 @@ def test(eval_set, epoch=0, write_tboard=False):
         es_theta = np.delete(es_theta, np.where(es_theta == est_final_theta))
         
         # input_groundtruth.csv : 입력 데이터에 대한 timestamp와 실제 lidar pose와 camera pose에 대한 정보를 행으로 갖고 있는 csv 파일
-        input_gt_filename = 'input_groundtruth_test.csv'
+        input_gt_filename = '../result/input_groundtruth_test.csv'
         header_input = ['gt_timestamp', 'gt_x', 'gt_y', 'gt_theta']
         input_gt = []
         input_gt.append(np.array([gt_timestamp, gt_x, gt_y, gt_theta]))
@@ -317,7 +317,7 @@ def test(eval_set, epoch=0, write_tboard=False):
                 csv_writer.writerow(row)
         print('input_groundtruth.csv complete! check input_groundtruth_test.csv')
 
-        output_estimate_filename = 'output_estimate_test.csv'
+        output_estimate_filename = '../result/output_estimate_test.csv'
         final_header = ['est_final_timestamp', 'est_final_x', 'est_final_y', 'est_final_theta']
         header = ['est_timestamp', 'est_x', 'est_y', 'est_theta']
         output_final_est = []
