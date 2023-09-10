@@ -14,8 +14,7 @@ import h5py
 
 def loadFeature(file='feature/dbFeature.npy'):
     if not os.path.exists(file):
-        print(file + ' not found')
-        return
+        raise FileNotFoundError(file + ' not found')
     dbFeat = np.load(file)
     return dbFeat
 
@@ -193,7 +192,7 @@ def parse_dbStruct(db_path, query_path, dataset):
     numQ = len(query_data['image_path'])
 
     posDistThr = 3
-    posDistSqThr = 9
+    posDistSqThr = np.sqrt(posDistThr)
     nonTrivPosDistSqThr = 5
 
     return dbStruct(whichSet, dataset, dbImage, utmDb, qImage, 
@@ -276,7 +275,18 @@ class WholeDatasetFromStruct(data.Dataset):
     def __len__(self):
         return len(self.images)
 
-    def getPositives(self, idx):
+    def getPositives(self):
+        # positives for evaluation are those within trivial threshold range
+        #fit NN to find them, search by radius
+        self.positives = None
+        if  self.positives is None:
+            knn = NearestNeighbors(n_jobs=-1)
+            knn.fit(self.dbStruct.utmDb)
+            self.distances, self.positives = knn.radius_neighbors(self.dbStruct.utmQ,
+                    radius=self.dbStruct.posDistThr)
+        return self.positives
+
+    def getPositives_test(self, idx):
         # positives for evaluation are those within trivial threshold range
         #fit NN to find them, search by radius
         self.positives = None

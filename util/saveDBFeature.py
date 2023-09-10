@@ -48,7 +48,7 @@ def saveFeature(eval_set):
 
             del input, image_encoding, vlad_encoding
     del test_data_loader
-    np.save('feature/dbFeature', dbFeat)
+    np.save('feature/dbFeature_' + opt.dataset, dbFeat)
     print('Save DB Feature successfully')
 
 if __name__ == "__main__":

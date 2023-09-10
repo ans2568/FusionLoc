@@ -22,7 +22,7 @@ import h5py
 import faiss
 
 import Struct as s
-import custom as dataset
+import util.load as dataset
 from pose_estimation import PoseEstimation
 
 from tensorboardX import SummaryWriter
@@ -171,8 +171,9 @@ def train(epoch):
     writer.add_scalar('Train/AvgLoss', avg_loss, epoch)
 
 def test(eval_set, epoch=0, write_tboard=False):
-    input_Struct = s.Struct(eval_set.dataset)
-    output_Struct = s.Struct(eval_set.dataset)
+    if opt.mode.lower() != 'train':
+        input_Struct = s.Struct(eval_set.dataset)
+        output_Struct = s.Struct(eval_set.dataset)
     # TODO what if features dont fit in memory? 
     test_data_loader = DataLoader(dataset=eval_set, 
                 num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
@@ -201,21 +202,18 @@ def test(eval_set, epoch=0, write_tboard=False):
     dbFeat = dbFeat[:eval_set.dbStruct.numDb].astype('float32')
     faiss_index = faiss.IndexFlatL2(pool_size)
     faiss_index.add(dbFeat)
-    if eval_set.dataset == 'gazebo':
-        # @ TODO Gazebo 사용으로 인한 경로 변경
-        input_Struct.append(eval_set.dbStruct.qImage[0][-18:-4])
-    elif eval_set.dataset == 'NIA':
-        input_Struct.append(eval_set.dbStruct.qImage[0][-22:-4])
-    elif eval_set.dataset == 'iiclab':
-        input_Struct.append(eval_set.dbStruct.qImage[0][-18:-4])
+
     if opt.mode.lower() != 'train':
         if eval_set.dataset == 'gazebo':
             # @ TODO Gazebo 사용으로 인한 경로 변경
             path = 'data/gazebo_dataset'
+            input_Struct.append(eval_set.dbStruct.qImage[0][-18:-4])
         elif eval_set.dataset == 'NIA':
             path = 'data/NIA'
+            input_Struct.append(eval_set.dbStruct.qImage[0][-22:-4])
         elif eval_set.dataset == 'iiclab':
             path = 'data/iiclab_real/'
+            input_Struct.append(eval_set.dbStruct.qImage[0][-18:-4])
         input_img = path + eval_set.dbStruct.qImage[0]
         img = Image.open(input_img)
         tf = transforms.Compose([transforms.ToTensor()])
@@ -231,7 +229,7 @@ def test(eval_set, epoch=0, write_tboard=False):
         elif eval_set.dataset == 'iiclab':
             input_img.save("prediction/" + eval_set.dataset + "/input_" + str(eval_set.dbStruct.qImage[0][-18:-4]) + ".png")
 
-    pe = PoseEstimation(input_Struct.get(), eval_set.dataset)
+        pe = PoseEstimation(input_Struct.get(), eval_set.dataset)
 
     # print('====> Calculating recall @ N')
     n_values = [1] # 해당 값이 이미지 출력 개수와 동일
@@ -252,7 +250,7 @@ def test(eval_set, epoch=0, write_tboard=False):
                     if opt.mode.lower() != 'train':
                         output = transforms.ToPILImage()(img)
                         output.save("prediction/" + eval_set.dataset + "/output_" + str(timestamp) + "_" + str(index) + ".png")
-                    output_Struct.append(timestamp=timestamp)
+                        output_Struct.append(timestamp=timestamp)
                 break
     # # output_Struct에 있는 내용마다 OpticalFlow 진행(현재 20개)
     # for idx, output in enumerate(output_Struct.get()):
@@ -260,16 +258,6 @@ def test(eval_set, epoch=0, write_tboard=False):
     #     camera_T.opticalFlow(output) # return est_x, est_y, est_theta, diff_x, diff_y, diff_theta
 
     if opt.mode.lower() != 'train':
-        input_Struct = s.Struct(eval_set.dataset)
-        # @ TODO Gazebo 사용으로 인한 경로 변경
-        if eval_set.dataset == 'gazebo':
-            input_Struct.append(eval_set.dbStruct.qImage[0][-18:-4])
-        elif eval_set.dataset == 'NIA':
-            input_Struct.append(eval_set.dbStruct.qImage[0][-22:-4])
-        elif eval_set.dataset == 'iiclab':
-            input_Struct.append(eval_set.dbStruct.qImage[0][-18:-4])
-        camera_T = OF.CameraT(input_Struct.get(), eval_set.dataset)
-        lidar_T = icp.LiDART(input_Struct.get(), eval_set.dataset)
         # output_Struct에 있는 내용마다 OpticalFlow 진행(현재 20개)
         final_data = []
         gt_timestamp = []
@@ -348,22 +336,22 @@ def test(eval_set, epoch=0, write_tboard=False):
         print('output_estimate_test.csv complete! check output_estimate_test.csv')
 
         # 3D 산점도
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.scatter(est_final_x, est_final_y, est_final_theta, marker='o', c='#ff7f0e', label='estimated final pose')
-        ax.scatter(gt_x, gt_y, gt_theta, marker='^', c='#2ca02c', label = 'groundtruth pose')
-        ax.scatter(es_x, es_y, es_theta, marker='o', c='#000000', label='estimated pose')
-        ax.set_xlim3d(est_final_x - 5, est_final_x + 5)
-        ax.set_ylim3d(est_final_y - 5, est_final_y + 5)
-        ax.set_zlim3d(est_final_theta - 5, est_final_theta + 5)
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # ax.scatter(est_final_x, est_final_y, est_final_theta, marker='o', c='#ff7f0e', label='estimated final pose')
+        # ax.scatter(gt_x, gt_y, gt_theta, marker='^', c='#2ca02c', label = 'groundtruth pose')
+        # ax.scatter(es_x, es_y, es_theta, marker='o', c='#000000', label='estimated pose')
+        # ax.set_xlim3d(est_final_x - 5, est_final_x + 5)
+        # ax.set_ylim3d(est_final_y - 5, est_final_y + 5)
+        # ax.set_zlim3d(est_final_theta - 5, est_final_theta + 5)
 
-        ax.set_xlabel('x position(cm)')
-        ax.set_ylabel('y position(cm)')
-        ax.set_zlabel('theta angle(radian)')
-        ax.legend()
-        plt.title('Pose Distribution')
+        # ax.set_xlabel('x position(cm)')
+        # ax.set_ylabel('y position(cm)')
+        # ax.set_zlabel('theta angle(radian)')
+        # ax.legend()
+        # plt.title('Pose Distribution')
 
-        plt.show()
+        # plt.show()
 
     # 필요없는 recall 계산
     recall_at_n = correct_at_n / eval_set.dbStruct.numQ
@@ -642,7 +630,7 @@ if __name__ == "__main__":
     if opt.mode.lower() == 'test':
         print('===> Running evaluation step')
         epoch = 1
-        test(whole_test_set, epoch, write_tboard=False)
+        recalls = test(whole_test_set, epoch, write_tboard=False)
         # @TODO 여기 부분에 추가해야함
     elif opt.mode.lower() == 'cluster':
         print('===> Calculating descriptors and clusters')
@@ -671,10 +659,10 @@ if __name__ == "__main__":
             train(epoch)
             if (epoch % opt.evalEvery) == 0:
                 recalls = test(whole_test_set, epoch, write_tboard=True)
-                is_best = recalls[3] > best_score 
+                is_best = recalls[1] > best_score 
                 if is_best:
                     not_improved = 0
-                    best_score = recalls[3]
+                    best_score = recalls[1]
                 else: 
                     not_improved += 1
 
@@ -691,5 +679,5 @@ if __name__ == "__main__":
                     print('Performance did not improve for', opt.patience, 'epochs. Stopping.')
                     break
 
-        print("=> Best Recall@5: {:.4f}".format(best_score), flush=True)
+        print("=> Best Recall@1: {:.4f}".format(best_score), flush=True)
         writer.close()

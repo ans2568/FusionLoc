@@ -41,6 +41,7 @@ parser.add_argument('--vladv2', action='store_true', help='Use VLAD v2')
 parser.add_argument('--num_clusters', type=int, default=64, help='Number of NetVlad clusters. Default=64')
 parser.add_argument('--fromscratch', action='store_true', help='Train from scratch rather than using pretrained models')
 parser.add_argument('--dataset', type=str, default='NIA', help='select Dataset type [gazebo, NIA, iiclab]')
+parser.add_argument('--mode', type=str, default='both', help='select mode [camera, both]')
 
 def test(eval_set):
     # TODO what if features dont fit in memory? 
@@ -49,7 +50,7 @@ def test(eval_set):
 
     model.eval()
     loading_time = time.time()
-    dbFeat = np.array(loadFeature('feature/dbFeature.npy'), dtype=np.float32)
+    dbFeat = np.array(loadFeature('feature/dbFeature_' + opt.dataset + '.npy'), dtype=np.float32)
     with torch.no_grad():
         print('====> Extracting Features')
         pool_size = encoder_dim
@@ -78,6 +79,7 @@ def test(eval_set):
     for idx, image in enumerate(eval_set.dbStruct.qImage):
         input_Struct = None
         output_Struct = None
+        query_timestamp = None
         input_Struct = Struct(eval_set.dataset)
         output_Struct = Struct(eval_set.dataset)
         if eval_set.dataset == 'gazebo':
@@ -105,7 +107,7 @@ def test(eval_set):
         qFeature = qFeat[idx][np.newaxis, :]
         _, predictions = faiss_index.search(qFeature, max(n_values))
         # for each query get those within threshold distance
-        gt = eval_set.getPositives(idx)
+        gt = eval_set.getPositives_test(idx)
         correct_at_n = np.zeros(len(n_values))
         #TODO can we do this on the matrix in one go?
         for qIx, pred in enumerate(predictions):
@@ -128,35 +130,50 @@ def test(eval_set):
             gt_x = input_Struct.get()[0][1] # 입력 데이터의 groundtruth x
             gt_y = input_Struct.get()[0][2] # 입력 데이터의 groundtruth y
             gt_theta = input_Struct.get()[0][3] # 입력 데이터의 groundtruth theta
-            image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c = pe.fivePointRANSAC() # return image_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
-            lidar_db, est_x_l, est_y_l, est_theta_l, diff_x_l, diff_y_l, diff_theta_l = pe.icp() # return lidar_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
-            data = np.array([t_stamp, image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c, lidar_db, est_x_l, est_y_l, est_theta_l, diff_x_l, diff_y_l, diff_theta_l])
-            final_data.append(data)
-            float_cols = [5,6,7,12,13,14]
-            dist_data = np.array(final_data)[:, float_cols].astype(float)
-            euclidean_dist_c = np.sqrt(dist_data[:,0]**2 + dist_data[:,1]**2 + dist_data[:,2]**2) # 카메라에서의 유클리디안 거리
-            euclidean_dist_l = np.sqrt(dist_data[:,3]**2 + dist_data[:,4]**2 + dist_data[:,5]**2) # 라이다에서의 유클리디안 거리
-            min_index_c = np.argmin(euclidean_dist_c) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스
-            min_index_l = np.argmin(euclidean_dist_l) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스
-            est_x_c = float(final_data[min_index_c][2]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 x 값
-            est_y_c = float(final_data[min_index_c][3]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 y 값
-            est_theta_c = float(final_data[min_index_c][4]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 theta 값
-            est_x_l = float(final_data[min_index_l][9]) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 x 값
-            est_y_l = float(final_data[min_index_l][10]) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 y 값
-            est_theta_l = float(final_data[min_index_l][11]) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 theta 값
-            est_timestamp = str(final_data[min_index_l][0]) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 timestamp
+            if opt.mode == 'camera':
+                image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c = pe.fivePointRANSAC() # return image_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
+                data = np.array([t_stamp, image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c], dtype=object)
+                final_data.append(data)
+                float_cols = [5,6,7]
+                dist_data = np.array(final_data)[:, float_cols].astype(float)
+                euclidean_dist_c = np.sqrt(dist_data[:,0]**2 + dist_data[:,1]**2 + dist_data[:,2]**2) # 카메라에서의 유클리디안 거리
+                min_index_c = np.argmin(euclidean_dist_c) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스
+                est_x_c = float(final_data[min_index_c][2]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 x 값
+                est_y_c = float(final_data[min_index_c][3]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 y 값
+                est_theta_c = float(final_data[min_index_c][4]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 theta 값
+                est_timestamp = str(final_data[min_index_c][0]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 timestamp
 
-            # 람다 = 0.9
-            # est_final_x = 0.9*est_x_l + 0.1*est_x_c # 최종 포즈 x
-            # est_final_y = 0.9*est_y_l + 0.1*est_y_c # 최종 포즈 y
-            # est_final_theta = 0.9*est_theta_l + 0.1*est_theta_c # 최종 포즈 theta
+                est_final_x = est_x_c # 최종 포즈 x
+                est_final_y = est_y_c # 최종 포즈 y
+                est_final_theta = est_theta_c # 최종 포즈 theta
 
-            est_final_x = est_x_c # 최종 포즈 x
-            est_final_y = est_y_c # 최종 포즈 y
-            est_final_theta = est_theta_c # 최종 포즈 theta
+            elif opt.mode == 'both':
+                image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c = pe.fivePointRANSAC() # return image_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
+                lidar_db, est_x_l, est_y_l, est_theta_l, diff_x_l, diff_y_l, diff_theta_l = pe.icp() # return lidar_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
+                data = np.array([t_stamp, image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c, lidar_db, est_x_l, est_y_l, est_theta_l, diff_x_l, diff_y_l, diff_theta_l], dtype=object)
+                final_data.append(data)
+                float_cols = [5,6,7,12,13,14]
+                dist_data = np.array(final_data)[:, float_cols].astype(float)
+                euclidean_dist_c = np.sqrt(dist_data[:,0]**2 + dist_data[:,1]**2 + dist_data[:,2]**2) # 카메라에서의 유클리디안 거리
+                euclidean_dist_l = np.sqrt(dist_data[:,3]**2 + dist_data[:,4]**2 + dist_data[:,5]**2) # 라이다에서의 유클리디안 거리
+                min_index_c = np.argmin(euclidean_dist_c) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스
+                min_index_l = np.argmin(euclidean_dist_l) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스
+                est_x_c = float(final_data[min_index_c][2]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 x 값
+                est_y_c = float(final_data[min_index_c][3]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 y 값
+                est_theta_c = float(final_data[min_index_c][4]) # 카메라의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 theta 값
+                est_x_l = float(final_data[min_index_l][9]) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 x 값
+                est_y_l = float(final_data[min_index_l][10]) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 y 값
+                est_theta_l = float(final_data[min_index_l][11]) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 theta 값
+                est_timestamp = str(final_data[min_index_l][0]) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 timestamp
+
+                # 람다 = 0.9
+                lambda_value = 0.6
+                est_final_x = lambda_value*est_x_l + (1-lambda_value)*est_x_c # 최종 포즈 x
+                est_final_y = lambda_value*est_y_l + (1-lambda_value)*est_y_c # 최종 포즈 y
+                est_final_theta = lambda_value*est_theta_l + (1-lambda_value)*est_theta_c # 최종 포즈 theta
 
             # input_groundtruth.csv : 입력 데이터에 대한 timestamp와 실제 lidar pose와 camera pose에 대한 정보를 행으로 갖고 있는 csv 파일
-            result_filename = 'result.csv'
+            result_filename = 'result_' + opt.dataset + "_" + str(lambda_value) + '.csv'
             header_input = ['input_timestamp', 'output_timestamp', 'input_X', 'output_X', 'input_Y',
                             'output_Y', 'input_theta', 'output_theta', 'difference_X(m)', 'difference_Y(m)',
                             'difference_theta(radian)', 'error_Position_L2 norm(m)', 'error_Orientation(degree)']

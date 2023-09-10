@@ -169,3 +169,5 @@ settings.json
 *.pcd
 *.zip
 *.npy
+*.txt
+*.db

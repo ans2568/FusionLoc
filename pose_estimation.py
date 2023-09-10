@@ -95,10 +95,12 @@ class PoseEstimation:
 
         T = np.hstack((R, t))
         T = np.vstack((T, [0, 0, 0, 1]))
-        est_T = np.dot(self.gt_transformation_db, T)
+        est_T = np.matmul(self.gt_transformation_db, T)
         est_R = est_T[:3, :3]
         est_t = est_T[:3, 3]
-        est_theta = np.arctan2(est_R[1, 0], est_R[0, 0])
+        rot_vec = cv2.Rodrigues(est_R)[0]
+        est_theta = rot_vec[2][0]
+        # est_theta = np.arctan2(est_R[1, 0], est_R[0, 0])
         est_x = est_t[0]
         est_y = est_t[1]
         diff_x = abs(abs(est_x) - abs(self.gt_x))
