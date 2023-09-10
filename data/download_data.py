@@ -29,7 +29,7 @@ def makeDirs(dir_path):
 
 if __name__ == "__main__":
     google_path = 'https://drive.google.com/uc?id='
-    data_folder = "./data/NIA/"
+    data_folder = "./NIA/"
     makeDirs(data_folder)
 
     camera_zip_id = '1wMMvq1SGyt_gEvlfA9u9eTpHiz_VmIru'
