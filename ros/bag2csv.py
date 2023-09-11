@@ -3,6 +3,7 @@ import csv
 import argparse
 
 import cv2
+import math
 import numpy as np
 import open3d as o3d
 from datetime import datetime
@@ -14,12 +15,12 @@ from rosbag2_py import SequentialReader, StorageOptions, ConverterOptions, Stora
 
 parser = argparse.ArgumentParser(description='Converting a ROS bag file to a CSV file')
 parser.add_argument('--bag', type=str, default='/path/to/ros2_ws/bag/data.bag', help='ROS bag file')
-parser.add_argument('--csvDir', type=str, default='../data/jackal_dataset/csv', help='The directory to save CSV file')
-parser.add_argument('--lidarDir', type=str, default='../data/jackal_dataset/lidar', help='The directory to save pcd file')
-parser.add_argument('--cameraDir', type=str, default='../data/jackal_dataset/camera', help='The directory to save png file')
+parser.add_argument('--csvDir', type=str, default='../data/custom_dataset/csv', help='The directory to save CSV file')
+parser.add_argument('--lidarDir', type=str, default='../data/custom_dataset/lidar', help='The directory to save pcd file')
+parser.add_argument('--cameraDir', type=str, default='../data/custom_dataset/camera', help='The directory to save png file')
 parser.add_argument('--cameraTopic', type=str, default='/image_raw/compressed', help='Camera topic name in rosbag')
 parser.add_argument('--lidarTopic', type=str, default='/scan', help='PointCloud topic name in rosbag')
-parser.add_argument('--odometryTopic', type=str, default='/odom', help='Odometry topic name in rosbag')
+parser.add_argument('--tfTopic', type=str, default='/tf', help='Odometry topic name in rosbag')
 
 if __name__ == "__main__":
     opt = parser.parse_args()
@@ -30,7 +31,7 @@ if __name__ == "__main__":
 
     lidar_topic = opt.lidarTopic
     camera_topic = opt.cameraTopic
-    odometry_topic = opt.odometryTopic
+    tf_topic = opt.tfTopic
 
     if not os.path.exists(csv_dir):
         os.makedirs(csv_dir)
@@ -41,7 +42,7 @@ if __name__ == "__main__":
 
     storage_options = StorageOptions(uri=opt.bag, storage_id="sqlite3")
     converter_options = ConverterOptions('cdr', 'cdr')
-    storage_filter = StorageFilter(topics=[lidar_topic, camera_topic, odometry_topic])
+    storage_filter = StorageFilter(topics=[lidar_topic, camera_topic, tf_topic])
 
     # open the bag file
     reader = SequentialReader()
@@ -50,7 +51,7 @@ if __name__ == "__main__":
 
     lidar_time = None
     camera_time = None
-    odom_time = None
+    tf_time = None
 
     csv_file = open(os.path.join(csv_dir, "whole_data.csv"), mode="w")
     csv_writer = csv.writer(csv_file)
@@ -92,17 +93,31 @@ if __name__ == "__main__":
                 csv_writer.writerow([sec, "", "", "", "", "", "", "", os.path.join(camera_dir, file_name), ""])
                 camera_time = timestamp
 
-        elif topic == odometry_topic:
-            type = get_message('nav_msgs/msg/Odometry')
+        elif topic == tf_topic:
+            type = get_message('tf2_msgs/msg/TFMessage')
             msg = deserialize_message(data, type)
-            if not odom_time:
-                odom_time = timestamp
-            if int(timestamp.timestamp() - odom_time.timestamp()) >= 1:
-                if msg.child_frame_id == "base_footprint" and msg.header.frame_id == "odom":
-                    position = msg.pose.pose.position
-                    orientation = msg.pose.pose.orientation
-                    csv_writer.writerow([sec, position.x, position.y, position.z, orientation.w, orientation.x, orientation.y, orientation.z, "", ""])
-                    odom_time = timestamp
+            if not tf_time:
+                tf_time = timestamp
+            if int(timestamp.timestamp() - tf_time.timestamp()) >= 1:
+                if msg.transform.child_frame_id == "odom" and msg.transform.header.frame_id == "map":
+                    reference_x = msg.transform.transform.translation.x
+                    reference_y = msg.transform.transform.translation.y
+                    reference_q = msg.transform.transform.rotation
+                    reference_theta = math.atan2(2 * (reference_q.w * reference_q.z + reference_q.x * reference_q.y), 
+                                    1 - 2 * (reference_q.y**2 + reference_q.z**2))
+                for transform in msg.transforms:
+                    pose_x, pose_y, reference_x, reference_y, theta, quaternion = None
+                    if transform.child_frame_id == "base_footprint" and transform.header.frame_id == "odom":
+                        pose_x = transform.transform.translation.x
+                        pose_y = transform.transform.translation.y
+                        quaternion = transform.transform.rotation
+                        theta = math.atan2(2 * (quaternion.w * quaternion.z + quaternion.x * quaternion.y), 
+                                        1 - 2 * (quaternion.y**2 + quaternion.z**2))
+                        tf_time = timestamp
+                        pose_x += reference_x
+                        pose_y += reference_y
+                        theta += reference_theta
+                        csv_writer.writerow([sec, "", "", "", "", "", "", "", "", "", "", "", pose_x, pose_y, theta, "", "", "", "", ""])
 
     print("Finish to make csv file")
     print("Start to synchronize csv file")
