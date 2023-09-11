@@ -18,151 +18,59 @@ def loadFeature(file='../feature/dbFeature.npy'):
     dbFeat = np.load(file)
     return dbFeat
 
-root_dir = '../data/NIA/'
-if not exists(root_dir):
-    raise FileNotFoundError(root_dir + ' is hardcoded, please adjust to point to custom dataset')
-
-struct_dir = join(root_dir, 'csv')
-queries_dir = root_dir
-
-
-gz_root_dir = '../data/gazebo/'
-if not exists(gz_root_dir):
-    raise FileNotFoundError(gz_root_dir + ' is hardcoded, please adjust to point to custom dataset')
-
-gz_struct_dir = join(gz_root_dir, 'csv')
-gz_queries_dir = gz_root_dir
-
-iic_dir = '../data/iiclab/'
-if not exists(iic_dir):
-    raise FileNotFoundError(iic_dir + ' is hardcoded, please adjust to point to custom dataset')
-
-iic_struct_dir = join(iic_dir, 'csv')
-iic_queries_dir = iic_dir
-
 def input_transform():
     return transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                               std=[0.229, 0.224, 0.225]),
+                            std=[0.229, 0.224, 0.225]),
     ])
 
+class Dataset():
+    def __init__(self, dir, dataset):
+        self.dataset = dataset
+        self.dir = join(dir, dataset) # ../data/NIA, ../data/gazebo_dataset/, ../data/iic_dataset_theta
+        if not exists(self.dir):
+            raise FileNotFoundError(self.dir + ' is hardcoded, please adjust to point to custom dataset')
 
-# .mat 파일이 아닌 .csv 파일로 db_CSV_file, query_CSV_file로 두 개 보내기 
-# gazebo 데이터 셋
-def get_gazebo_whole_training_set(onlyDB=False): # 학습할 때 사용하는 전체 데이터 셋(DB만 사용)
-    dbFile = join(gz_struct_dir, 'train_db_data.csv')
-    queryFile = join(gz_struct_dir, 'train_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryFile,
-                             input_transform=input_transform(),
-                             onlyDB=onlyDB, dataset='gazebo')
+        self.csv_dir = join(self.dir, 'csv')
+        self.queries_dir = self.dir
 
-def get_gazebo_whole_test_set():
-    dbFile = join(gz_struct_dir, 'test_db_data_reduce.csv')
-    queryFile = join(gz_struct_dir, 'test_query_one_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
-                             input_transform=input_transform(), dataset='gazebo')
+    def get_whole_training_set(self, onlyDB=False): # 학습할 때 사용하는 전체 데이터 셋(DB만 사용)
+        dbFile = join(self.csv_dir, 'train_db_data.csv')
+        queryFile = join(self.csv_dir, 'train_query_data.csv')
+        return WholeDatasetFromStruct(self.queries_dir, dbFile, queryFile,
+                                input_transform=input_transform(),
+                                onlyDB=onlyDB, dataset=self.dataset)
 
-def get_gazebo_DB_test_set():
-    dbFile = join(gz_struct_dir, 'test_db_data_reduce.csv')
-    queryFile = join(gz_struct_dir, 'test_query_one_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
-                             input_transform=input_transform(), dataset='gazebo', onlyDB=True)
+    def get_whole_test_set(self):
+        dbFile = join(self.csv_dir, 'test_db_data.csv')
+        queryFile = join(self.csv_dir, 'test_query_one_data.csv')
+        return WholeDatasetFromStruct(self.queries_dir, dbFile, queryCSVFile=queryFile,
+                                input_transform=input_transform(), dataset=self.dataset)
 
-def get_gazebo_Query_test_set():
-    dbFile = join(gz_struct_dir, 'test_db_data_reduce.csv')
-    queryFile = join(gz_struct_dir, 'test_query_one_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
-                             input_transform=input_transform(), dataset='gazebo', onlyQuery=True)
+    def get_DB_test_set(self):
+        dbFile = join(self.csv_dir, 'test_db_data.csv')
+        queryFile = join(self.csv_dir, 'test_query_one_data.csv')
+        return WholeDatasetFromStruct(self.queries_dir, dbFile, queryCSVFile=queryFile,
+                                input_transform=input_transform(), dataset=self.dataset, onlyDB=True)
 
-def get_gazebo_whole_val_set():
-    dbFile = join(gz_struct_dir, 'val_db_data.csv')
-    queryFile = join(gz_struct_dir, 'val_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryFile,
-                             input_transform=input_transform(), dataset='gazebo')
+    def get_Query_test_set(self):
+        dbFile = join(self.csv_dir, 'test_db_data.csv')
+        queryFile = join(self.csv_dir, 'test_query_one_data.csv')
+        return WholeDatasetFromStruct(self.queries_dir, dbFile, queryCSVFile=queryFile,
+                                input_transform=input_transform(), dataset=self.dataset, onlyQuery=True)
 
-def get_gazebo_training_query_set(margin=0.1): # 학습할 때 사용하는 전체 데이터 셋(Query와 DB)
-    dbFile = join(gz_struct_dir, 'train_db_data.csv')
-    queryFile = join(gz_struct_dir, 'train_query_data.csv')
-    return QueryDatasetFromStruct(dbFile, queryFile,
-                             input_transform=input_transform(), margin=margin, dataset='gazebo')
+    def get_whole_val_set(self):
+        dbFile = join(self.csv_dir, 'val_db_data.csv')
+        queryFile = join(self.csv_dir, 'val_query_data.csv')
+        return WholeDatasetFromStruct(self.queries_dir, dbFile, queryFile,
+                                input_transform=input_transform(), dataset=self.dataset)
 
-# 연구실 데이터 셋
-def get_iiclab_whole_training_set(onlyDB=False): # 학습할 때 사용하는 전체 데이터 셋(DB만 사용)
-    dbFile = join(iic_struct_dir, 'train_db_data.csv')
-    queryFile = join(iic_struct_dir, 'train_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryFile,
-                             input_transform=input_transform(),
-                             onlyDB=onlyDB, dataset='iiclab')
-
-def get_iiclab_whole_test_set():
-    dbFile = join(iic_struct_dir, 'test_db_data.csv')
-    queryFile = join(iic_struct_dir, 'test_query_one_data.csv')
-    # queryFile = join(iic_struct_dir, 'test_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
-                             input_transform=input_transform(), dataset='iiclab')
-
-def get_iiclab_DB_test_set():
-    dbFile = join(iic_struct_dir, 'test_db_data.csv')
-    queryFile = join(iic_struct_dir, 'test_query_one_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
-                             input_transform=input_transform(), dataset='iiclab', onlyDB=True)
-
-def get_iiclab_Query_test_set():
-    dbFile = join(iic_struct_dir, 'test_db_data.csv')
-    queryFile = join(iic_struct_dir, 'test_query_one_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
-                             input_transform=input_transform(), dataset='iiclab', onlyQuery=True)
-
-def get_iiclab_whole_val_set():
-    dbFile = join(iic_struct_dir, 'val_db_data.csv')
-    queryFile = join(iic_struct_dir, 'val_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryFile,
-                             input_transform=input_transform(), dataset='iiclab')
-
-def get_iiclab_training_query_set(margin=0.1): # 학습할 때 사용하는 전체 데이터 셋(Query와 DB)
-    dbFile = join(iic_struct_dir, 'train_db_data.csv')
-    queryFile = join(iic_struct_dir, 'train_query_data.csv')
-    return QueryDatasetFromStruct(dbFile, queryFile,
-                             input_transform=input_transform(), margin=margin, dataset='iiclab')
-
-# 청주시외버스터미널 데이터 셋
-def get_whole_training_set(onlyDB=False): # 학습할 때 사용하는 전체 데이터 셋(DB만 사용)
-    dbFile = join(struct_dir, 'train_db_data.csv')
-    queryFile = join(struct_dir, 'train_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryFile,
-                             input_transform=input_transform(),
-                             onlyDB=onlyDB)
-
-def get_DB_test_set():
-    dbFile = join(struct_dir, 'test_db_data.csv')
-    queryFile = join(struct_dir, 'test_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
-                             input_transform=input_transform(), onlyDB=True)
-
-def get_Query_test_set():
-    dbFile = join(struct_dir, 'test_db_data.csv')
-    queryFile = join(struct_dir, 'test_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
-                             input_transform=input_transform(), onlyQuery=True)
-
-def get_whole_test_set():
-    dbFile = join(struct_dir, 'test_db_data.csv')
-    queryFile = join(struct_dir, 'test_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryCSVFile=queryFile,
-                             input_transform=input_transform())
-
-def get_whole_val_set():
-    dbFile = join(struct_dir, 'val_db_data.csv')
-    queryFile = join(struct_dir, 'val_query_data.csv')
-    return WholeDatasetFromStruct(dbFile, queryFile,
-                             input_transform=input_transform())
-
-def get_training_query_set(margin=0.1): # 학습할 때 사용하는 전체 데이터 셋(Query와 DB)
-    dbFile = join(struct_dir, 'train_db_data.csv')
-    queryFile = join(struct_dir, 'train_query_data.csv')
-    return QueryDatasetFromStruct(dbFile, queryFile,
-                             input_transform=input_transform(), margin=margin)
+    def get_training_query_set(self, margin=0.1): # 학습할 때 사용하는 전체 데이터 셋(Query와 DB)
+        dbFile = join(self.csv_dir, 'train_db_data.csv')
+        queryFile = join(self.csv_dir, 'train_query_data.csv')
+        return QueryDatasetFromStruct(self.queries_dir, dbFile, queryFile,
+                                input_transform=input_transform(), margin=margin, dataset=self.dataset)
 
 dbStruct = namedtuple('dbStruct', ['whichSet', 'dataset',
     'dbImage', 'utmDb', 'qImage', 'utmQ', 'numDb', 'numQ',
@@ -181,12 +89,12 @@ def parse_dbStruct(db_path, query_path, dataset):
     dbImage = db_data['image_path'].tolist()
     utmDb = []
     for i in range(len(db_data)):
-        utmDb.append([db_data.loc[i, 'GT_pose_x'], db_data.loc[i, 'GT_pose_y'], db_data.loc[i, 'GT_pose_theta']])
+        utmDb.append([db_data.loc[i, 'x'], db_data.loc[i, 'y'], db_data.loc[i, 'qz']])
 
     qImage = query_data['image_path'].tolist()
     utmQ = []
     for i in range(len(query_data)):
-        utmQ.append([query_data.loc[i, 'GT_pose_x'], query_data.loc[i, 'GT_pose_y'], query_data.loc[i, 'GT_pose_theta']])
+        utmQ.append([query_data.loc[i, 'x'], query_data.loc[i, 'y'], query_data.loc[i, 'qz']])
 
     numDb = len(db_data['image_path'])
     numQ = len(query_data['image_path'])
@@ -200,7 +108,7 @@ def parse_dbStruct(db_path, query_path, dataset):
             posDistSqThr, nonTrivPosDistSqThr)
 
 class WholeDatasetFromStruct(data.Dataset):
-    def __init__(self, dbCSVFile, queryCSVFile, input_transform=None, onlyDB=False, dataset='NIA', onlyQuery=False):
+    def __init__(self, queries_dir, dbCSVFile, queryCSVFile, input_transform=None, onlyDB=False, dataset='NIA', onlyQuery=False):
         super().__init__()
         self.onlyQuery = onlyQuery
 
@@ -208,15 +116,7 @@ class WholeDatasetFromStruct(data.Dataset):
 
         self.dbStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset)
         self.queryStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset)
-        if dataset == 'gazebo':
-            if onlyQuery:
-                self.images = [join(gz_queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
-                self.images += [join(gz_queries_dir, qIm[1:]) for qIm in self.queryStruct.qImage]
-            else:
-                self.images = [join(gz_queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
-                if not onlyDB:
-                    self.images += [join(gz_queries_dir, qIm[1:]) for qIm in self.dbStruct.qImage]
-        elif dataset == 'NIA':
+        if dataset == 'gazebo' or dataset == 'NIA':
             if onlyQuery:
                 self.images = [join(queries_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
                 self.images += [join(queries_dir, qIm[1:]) for qIm in self.queryStruct.qImage]
@@ -226,12 +126,12 @@ class WholeDatasetFromStruct(data.Dataset):
                     self.images += [join(queries_dir, qIm[1:]) for qIm in self.dbStruct.qImage]
         elif dataset == 'iiclab':
             if onlyQuery:
-                self.images = [join(iic_queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
-                self.images += [join(iic_queries_dir, qIm[:]) for qIm in self.queryStruct.qImage]
+                self.images = [join(queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
+                self.images += [join(queries_dir, qIm[:]) for qIm in self.queryStruct.qImage]
             else:
-                self.images = [join(iic_queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
+                self.images = [join(queries_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
                 if not onlyDB:
-                    self.images += [join(iic_queries_dir, qIm[:]) for qIm in self.dbStruct.qImage]
+                    self.images += [join(queries_dir, qIm[:]) for qIm in self.dbStruct.qImage]
 
         if onlyQuery:
             self.whichSet = self.queryStruct.whichSet
@@ -263,13 +163,10 @@ class WholeDatasetFromStruct(data.Dataset):
         tf = transforms.Compose([transforms.ToTensor()])
         img = tf(img)
         if path.endswith(".png"):
-            if self.dataset == 'gazebo':
+            if self.dataset == 'gazebo' or self.dataset == 'iiclab':
                 path = path[-18:-4]
             elif self.dataset == 'NIA':
                 path = path[-22:-4]
-            elif self.dataset == 'iiclab':
-                # @TODO dataset에따라 이름 설정
-                path = path[-18:-4]
         return img, path
 
     def __len__(self):
@@ -325,9 +222,9 @@ def collate_fn(batch):
     return query, positive, negatives, negCounts, indices
 
 class QueryDatasetFromStruct(data.Dataset):
-    def __init__(self, dbCSVFile, queryCSVFile, nNegSample=50, nNeg=2, margin=0.1, input_transform=None, dataset='NIA'):
+    def __init__(self, queries_dir, dbCSVFile, queryCSVFile, nNegSample=50, nNeg=2, margin=0.1, input_transform=None, dataset='NIA'):
         super().__init__()
-
+        self.queries_dir = queries_dir
         self.input_transform = input_transform
         self.margin = margin
 
@@ -401,15 +298,12 @@ class QueryDatasetFromStruct(data.Dataset):
             negNN = negNN[violatingNeg][:self.nNeg]
             negIndices = negSample[negNN].astype(np.int32)
             self.negCache[index] = negIndices
-        if self.dataset == 'gazebo':
-            query = Image.open(join(gz_queries_dir, self.dbStruct.qImage[index][1:]))
-            positive = Image.open(join(gz_queries_dir, self.dbStruct.dbImage[posIndex][1:]))
-        elif self.dataset == 'NIA':
-            query = Image.open(join(queries_dir, self.dbStruct.qImage[index][1:]))
-            positive = Image.open(join(queries_dir, self.dbStruct.dbImage[posIndex][1:]))
+        if self.dataset == 'gazebo' or self.dataset == 'NIA':
+            query = Image.open(join(self.queries_dir, self.dbStruct.qImage[index][1:]))
+            positive = Image.open(join(self.queries_dir, self.dbStruct.dbImage[posIndex][1:]))
         elif self.dataset == 'iiclab':
-            query = Image.open(join(iic_queries_dir, self.dbStruct.qImage[index][:]))
-            positive = Image.open(join(iic_queries_dir, self.dbStruct.dbImage[posIndex][:]))
+            query = Image.open(join(self.queries_dir, self.dbStruct.qImage[index][:]))
+            positive = Image.open(join(self.queries_dir, self.dbStruct.dbImage[posIndex][:]))
 
         if self.input_transform:
             query = self.input_transform(query)
@@ -417,12 +311,10 @@ class QueryDatasetFromStruct(data.Dataset):
 
         negatives = []
         for negIndex in negIndices:
-            if self.dataset == 'gazebo':
-                negative = Image.open(join(gz_queries_dir, self.dbStruct.dbImage[negIndex][1:]))
-            elif self.dataset == 'NIA':
-                negative = Image.open(join(queries_dir, self.dbStruct.dbImage[negIndex][1:]))
+            if self.dataset == 'gazebo' or self.dataset == 'NIA':
+                negative = Image.open(join(self.queries_dir, self.dbStruct.dbImage[negIndex][1:]))
             elif self.dataset == 'iiclab':
-                negative = Image.open(join(iic_queries_dir, self.dbStruct.dbImage[negIndex][:]))
+                negative = Image.open(join(self.queries_dir, self.dbStruct.dbImage[negIndex][:]))
             if self.input_transform:
                 negative = self.input_transform(negative)
             negatives.append(negative)

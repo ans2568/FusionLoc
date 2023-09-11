@@ -5,11 +5,11 @@ class Struct:
         self.struct = []
         self.struct_rest = []
         if dataset == 'gazebo':
-            self.df = pd.read_csv('../data/gazebo_dataset/csv/whole_synchronized_data.csv')
+            self.df = pd.read_csv('../data/gazebo/csv/whole_synchronized_data.csv')
         elif dataset == 'NIA':
             self.df = pd.read_csv('../data/NIA/csv/whole_data.csv')
         elif dataset == 'iiclab':
-            self.df = pd.read_csv('../data/iiclab_real/csv/whole_synchronized_data.csv')
+            self.df = pd.read_csv('../data/iiclab/csv/whole_synchronized_data.csv')
 
     def append(self, timestamp:str):
         self.time=(self.df.loc[self.df['time'] == timestamp, 'time'].values[0])
