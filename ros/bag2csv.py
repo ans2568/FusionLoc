@@ -57,6 +57,8 @@ if __name__ == "__main__":
     csv_writer = csv.writer(csv_file)
     csv_writer.writerow(["time", "x", "y", "z", "qw","qx", "qy", "qz", "image_path", "lidar_path"])
 
+    map_odom_msg = None
+
     while reader.has_next():
         topic, data, timestamp = reader.read_next()
         timestamp = datetime.fromtimestamp(timestamp/ 1e9)
@@ -70,6 +72,10 @@ if __name__ == "__main__":
             if int(timestamp.timestamp() - lidar_time.timestamp()) >= 1:
                 file_name = "{0}.pcd".format(sec)
                 angles = np.arange(msg.angle_min, msg.angle_max, msg.angle_increment)
+                if len(msg.ranges) > len(angles):
+                    msg.ranges = msg.ranges[:-1]
+                elif len(msg.ranges) < len(angles):
+                    angles = angles[:-1]
                 xs = np.array(msg.ranges) * np.cos(angles)
                 ys = np.array(msg.ranges) * np.sin(angles)
                 zs = np.zeros_like(np.array(msg.ranges))
@@ -99,25 +105,24 @@ if __name__ == "__main__":
             if not tf_time:
                 tf_time = timestamp
             if int(timestamp.timestamp() - tf_time.timestamp()) >= 1:
-                if msg.transform.child_frame_id == "odom" and msg.transform.header.frame_id == "map":
-                    reference_x = msg.transform.transform.translation.x
-                    reference_y = msg.transform.transform.translation.y
-                    reference_q = msg.transform.transform.rotation
-                    reference_theta = math.atan2(2 * (reference_q.w * reference_q.z + reference_q.x * reference_q.y), 
-                                    1 - 2 * (reference_q.y**2 + reference_q.z**2))
                 for transform in msg.transforms:
-                    pose_x, pose_y, reference_x, reference_y, theta, quaternion = None
+                    if transform.child_frame_id == "odom" and transform.header.frame_id == "map":
+                        map_odom_msg = transform
+                for transform in msg.transforms:
                     if transform.child_frame_id == "base_footprint" and transform.header.frame_id == "odom":
-                        pose_x = transform.transform.translation.x
-                        pose_y = transform.transform.translation.y
-                        quaternion = transform.transform.rotation
-                        theta = math.atan2(2 * (quaternion.w * quaternion.z + quaternion.x * quaternion.y), 
-                                        1 - 2 * (quaternion.y**2 + quaternion.z**2))
-                        tf_time = timestamp
-                        pose_x += reference_x
-                        pose_y += reference_y
-                        theta += reference_theta
-                        csv_writer.writerow([sec, "", "", "", "", "", "", "", "", "", "", "", pose_x, pose_y, theta, "", "", "", "", ""])
+                        if int(abs(map_odom_msg.header.stamp.sec - transform.header.stamp.sec)) < 1:
+                            reference_x = map_odom_msg.transform.translation.x
+                            reference_y = map_odom_msg.transform.translation.y
+                            reference_q = map_odom_msg.transform.rotation
+                            pose_x = transform.transform.translation.x
+                            pose_y = transform.transform.translation.y
+                            quaternion = transform.transform.rotation
+                            orientation_z = quaternion.z
+                            tf_time = timestamp
+                            pose_x += reference_x
+                            pose_y += reference_y
+                            orientation_z += reference_q.z
+                            csv_writer.writerow([sec, pose_x, pose_y, 0, quaternion.w, quaternion.x, quaternion.y, orientation_z, "", ""])
 
     print("Finish to make csv file")
     print("Start to synchronize csv file")

@@ -9,8 +9,8 @@
   - default : /scan
   - 현재 sensor_msgs/msg/LaserScan 타입만 지원
   - 추후 sensor_msgs/msg/PointCloud2 지원 예정
-- 위치 토픽(nav_msgs/msg/Odometry)
-  - default : /odom
+- 위치 토픽(tf2_msgs/msg/TFMessage)
+  - default : /tf
 ---
 ### 데이터 셋 만드는 법
 ```
@@ -18,9 +18,9 @@ python bag2csv.py --bag /path/to/ros2_ws/bag/data.bag \
 --csvDir ../data/custom_dataset/csv \
 --lidarDir ../data/custom_dataset/lidar \
 --cameraDir ../data/custom_dataset/camera \
---cameraTopic /compressed/image_raw \
+--cameraTopic /image_raw/compressed \
 --lidarTopic /scan \
---odometryTopic /odom
+--tfTopic /tf
 ```
 ---
 ### 순서
