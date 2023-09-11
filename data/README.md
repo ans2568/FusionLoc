@@ -36,11 +36,11 @@ python3 train_test_split.py --dataset iiclab --file whole_synchronized_data.csv
 ```
 data
     \_iiclab
-        	\_ camera
-                  	 \_ image files
-         	\_ csv
+            \_ camera
+                     \_ image files
+            \_ csv
             	  \_whole_synchronized_data.csv
-         	\_ lidar
+            \_ lidar
             	    \_ pcd files
 ```
 
@@ -49,14 +49,14 @@ data
 ```
 data
     \_iiclab
-         	\_ camera
-                	 \_ image files
-         	\_ csv
+            \_ camera
+                     \_ image files
+            \_ csv
             	  \_whole_synchronized_data.csv
-				  \_train_db_data.csv
-				  \_train_query_data.csv
-				  \_test_db_data.csv
-				  \_test_query_data.csv
-         	\_ lidar
+                  \_train_db_data.csv
+		  \_train_query_data.csv
+		  \_test_db_data.csv
+		  \_test_query_data.csv
+            \_ lidar
                     \_ pcd files
 ```
