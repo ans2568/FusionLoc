@@ -4,5 +4,5 @@
 
 ```bash
 # extract pre-build map feature
-python saveDBFeature.py --resume=../runsPath/Aug21_09-46-30_vgg16_netvlad/ --dataset=NIA
+python saveDBFeature.py --resume=runsPath/Aug21_09-46-30_vgg16_netvlad/ --dataset=NIA
 ```

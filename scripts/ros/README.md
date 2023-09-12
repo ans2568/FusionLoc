@@ -15,9 +15,9 @@
 ### 데이터 셋 만드는 법
 ```
 python bag2csv.py --bag /path/to/ros2_ws/bag/data.bag \ 
---csvDir ../data/custom_dataset/csv \
---lidarDir ../data/custom_dataset/lidar \
---cameraDir ../data/custom_dataset/camera \
+--csvDir csv \
+--lidarDir lidar \
+--cameraDir camera \
 --cameraTopic /image_raw/compressed \
 --lidarTopic /scan \
 --tfTopic /tf

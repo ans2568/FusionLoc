@@ -1,6 +1,7 @@
 import os
 import csv
 import argparse
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -11,12 +12,13 @@ from rclpy.serialization import deserialize_message
 from rosidl_runtime_py.utilities import get_message
 from rosbag2_py import SequentialReader, StorageOptions, ConverterOptions, StorageFilter
 
+root = Path(__file__).parent.parent.parent
 
 parser = argparse.ArgumentParser(description='Converting a ROS bag file to a CSV file')
 parser.add_argument('--bag', type=str, default='/path/to/ros2_ws/bag/data.bag', help='ROS bag file')
-parser.add_argument('--csvDir', type=str, default='../data/custom_dataset/csv', help='The directory to save CSV file')
-parser.add_argument('--lidarDir', type=str, default='../data/custom_dataset/lidar', help='The directory to save pcd file')
-parser.add_argument('--cameraDir', type=str, default='../data/custom_dataset/camera', help='The directory to save png file')
+parser.add_argument('--csvDir', type=str, default='csv', help='The directory to save CSV file')
+parser.add_argument('--lidarDir', type=str, default='lidar', help='The directory to save pcd file')
+parser.add_argument('--cameraDir', type=str, default='camera', help='The directory to save png file')
 parser.add_argument('--cameraTopic', type=str, default='/image_raw/compressed', help='Camera topic name in rosbag')
 parser.add_argument('--lidarTopic', type=str, default='/scan', help='PointCloud topic name in rosbag')
 parser.add_argument('--tfTopic', type=str, default='/tf', help='Odometry topic name in rosbag')

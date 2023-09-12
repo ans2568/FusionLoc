@@ -36,7 +36,7 @@ csv
 `scripts/train.py` 파일은 NetVLAD 학습 시 사용하는 파일로 --dataset 설정 필요
 
 **새로운 데이터 셋 추가 시 코드 수정이 필요함**
-- `scripts/pose_estimation.py`, `scripts/Struct.py`, `util/load.py` 파일들에 경로 추가 및 `--dataset`에 추가
+- `scripts/pose_estimation.py`, `scripts/Struct.py`, `scripts/util/load.py` 파일들에 경로 추가 및 `--dataset`에 추가
     - 추후 ArgumentParser로 실행 시 argument로 변경 예정
 
 ## CLI args
@@ -89,7 +89,7 @@ python scripts/train.py --dataset=NIA
 `--resume : train.py로 학습된 가중치 파일의 checkpoints 경로`
 
 ```bash
-python scripts/test.py --split=test --resume=runsPath/Apr22_17-03-05_vgg16_netvlad/ --dataset=NIA
+python scripts/test.py --resume=runsPath/Apr22_17-03-05_vgg16_netvlad/ --dataset=NIA
 ```
 
 **Note : 만약, DB 특징을 미리 추출하고 Test를 진행하고 싶은 경우 다음과 같이 진행**

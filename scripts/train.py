@@ -3,6 +3,7 @@ import argparse
 from math import ceil
 import random, shutil, json
 from os import makedirs, remove
+from pathlib import Path
 from os.path import join, exists
 
 import torch
@@ -17,11 +18,13 @@ import torchvision.models as models
 import h5py
 import faiss
 
-import util.load as dataset
+from util.load import Dataset, collate_fn
 
 from tensorboardX import SummaryWriter
 import numpy as np
 import netvlad as netvlad
+
+root = Path(__file__).parent.parent
 
 parser = argparse.ArgumentParser(description='Fine Tuning NetVLAD')
 parser.add_argument('--batchSize', type=int, default=4, 
@@ -42,11 +45,11 @@ parser.add_argument('--momentum', type=float, default=0.9, help='Momentum for SG
 parser.add_argument('--nocuda', action='store_true', help='Dont use cuda')
 parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 parser.add_argument('--seed', type=int, default=123, help='Random seed to use.')
-parser.add_argument('--dataPath', type=str, default='../dataPath/', help='Path for centroid data.')
-parser.add_argument('--runsPath', type=str, default='../runsPath/', help='Path to save runs to.')
-parser.add_argument('--savePath', type=str, default='../checkpoints', 
+parser.add_argument('--dataPath', type=str, default=join(root, 'dataPath'), help='Path for centroid data.')
+parser.add_argument('--runsPath', type=str, default=join(root, 'runsPath'), help='Path to save runs to.')
+parser.add_argument('--savePath', type=str, default=join(root, 'checkpoints'), 
         help='Path to save checkpoints to in logdir. Default=checkpoints/')
-parser.add_argument('--cachePath', type=str, default='../cache/', help='Path to save cache to.')
+parser.add_argument('--cachePath', type=str, default=join(root, 'cache'), help='Path to save cache to.')
 parser.add_argument('--evalEvery', type=int, default=1, 
         help='Do a validation set run, and save, every N epochs.')
 parser.add_argument('--patience', type=int, default=10, help='Patience for early stopping. 0 is off.')
@@ -61,7 +64,7 @@ parser.add_argument('--fromscratch', action='store_true', help='Train from scrat
 parser.add_argument('--dataset', type=str, default='NIA', help='select Dataset type [gazebo, NIA, iiclab]')
 
 
-def test(eval_set):
+def test(eval_set, epoch, write_tboard):
     test_data_loader = DataLoader(dataset=eval_set, num_workers=opt.threads, batch_size=opt.cacheBatchSize, 
                                   shuffle=False, pin_memory=cuda)
 
@@ -98,6 +101,15 @@ def test(eval_set):
             if np.any(np.in1d(pred[:n], gt[qIx])):
                 correct_at_n[i:] += 1
                 break
+    recall_at_n = correct_at_n / eval_set.dbStruct.numQ
+
+    recalls = {} #make dict for output
+    for i,n in enumerate(n_values):
+        recalls[n] = recall_at_n[i]
+        print("====> Recall@{}: {:.4f}".format(n, recall_at_n[i]))
+        if write_tboard: writer.add_scalar('Val/Recall@' + str(n), recall_at_n[i], epoch)
+
+    return recalls
 
 def train(epoch):
     epoch_loss = 0
@@ -133,7 +145,7 @@ def train(epoch):
 
         training_data_loader = DataLoader(dataset=sub_train_set, num_workers=opt.threads, 
                     batch_size=opt.batchSize, shuffle=True, 
-                    collate_fn=dataset.collate_fn, pin_memory=cuda)
+                    collate_fn=collate_fn, pin_memory=cuda)
 
         print('Allocated:', torch.cuda.memory_allocated())
         print('Cached:', torch.cuda.memory_cached())
@@ -235,19 +247,11 @@ if __name__ == "__main__":
     if cuda:
         torch.cuda.manual_seed(opt.seed)
 
+    dataset = Dataset(opt.dataset)
     print('===> Loading dataset(s)')
-    if opt.dataset == 'gazebo':
-        whole_train_set = dataset.get_gazebo_whole_training_set()
-        train_set = dataset.get_gazebo_training_query_set(opt.margin)
-        whole_test_set = dataset.get_gazebo_whole_test_set()
-    elif opt.dataset == 'NIA':
-        whole_train_set = dataset.get_whole_training_set()
-        train_set = dataset.get_training_query_set(opt.margin)
-        whole_test_set = dataset.get_whole_val_set()
-    elif opt.dataset == 'iiclab':
-        whole_train_set = dataset.get_iiclab_whole_training_set()
-        train_set = dataset.get_iiclab_training_query_set(opt.margin)
-        whole_test_set = dataset.get_iiclab_whole_test_set()
+    whole_train_set = dataset.get_whole_training_set()
+    train_set = dataset.get_training_query_set(opt.margin)
+    whole_test_set = dataset.get_whole_val_set()
 
     whole_training_data_loader = DataLoader(dataset=whole_train_set, 
             num_workers=opt.threads, batch_size=opt.cacheBatchSize, shuffle=False, 
@@ -287,17 +291,16 @@ if __name__ == "__main__":
 
     if opt.pooling.lower() == 'netvlad':
         net_vlad = netvlad.NetVLAD(num_clusters=opt.num_clusters, dim=encoder_dim, vladv2=opt.vladv2)
-        if not opt.resume: 
-            initcache = join(opt.dataPath, 'centroids', opt.arch + '_' + train_set.dataset + '_' + str(opt.num_clusters) +'_desc_cen.hdf5')
+        initcache = join(opt.dataPath, 'centroids', opt.arch + '_' + train_set.dataset + '_' + str(opt.num_clusters) +'_desc_cen.hdf5')
 
-            if not exists(initcache):
-                raise FileNotFoundError('Could not find clusters, please run cluster.py before training')
+        if not exists(initcache):
+            raise FileNotFoundError('Could not find clusters, please run cluster.py before training')
 
-            with h5py.File(initcache, mode='r') as h5: 
-                clsts = h5.get("centroids")[...]
-                traindescs = h5.get("descriptors")[...]
-                net_vlad.init_params(clsts, traindescs) 
-                del clsts, traindescs
+        with h5py.File(initcache, mode='r') as h5: 
+            clsts = h5.get("centroids")[...]
+            traindescs = h5.get("descriptors")[...]
+            net_vlad.init_params(clsts, traindescs) 
+            del clsts, traindescs
 
         model.add_module('pool', net_vlad)
     else:
@@ -308,6 +311,7 @@ if __name__ == "__main__":
         model.encoder = nn.DataParallel(model.encoder)
         model.pool = nn.DataParallel(model.pool)
         isParallel = True
+    model = model.to(device)
 
     if opt.optim.upper() == 'ADAM':
         optimizer = optim.Adam(filter(lambda p: p.requires_grad, 

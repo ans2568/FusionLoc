@@ -1,7 +1,10 @@
 from __future__ import print_function
+import os
+import sys
 import time
 import random
 import numpy as np
+from pathlib import Path
 from os.path import join, exists, isfile
 
 import torch
@@ -13,9 +16,12 @@ import faiss
 import cv2
 import open3d as o3d
 
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from Struct import Struct
 import netvlad as netvlad
-from load import Dataset, loadFeature
+from util.load import Dataset, loadFeature
+
+root = Path(__file__).parent.parent.parent
 
 class RootSIFT:
 	def __init__(self):
@@ -46,8 +52,8 @@ def to2Dcloud(points):
         return pcd
 
 class PoseEstimation:
-    def __init__(self, outputStruct, data_dir, dataset):
-        dir = join(data_dir, dataset)
+    def __init__(self, outputStruct, dataset):
+        dir = join(root, 'data', dataset)
         self.image_path = join(dir, 'camera')
         self.lidar_path = join(dir, 'lidar')
         self.camera_matrix = np.array([[1073.3427734375, 0.0, 980.5746459960938],
@@ -55,8 +61,8 @@ class PoseEstimation:
                                 [0.0, 0.0, 1.0]])
         # outputStruct는 리스트
         # [time, gt_x, gt_y, gt_theta, image_path, lidar_path]
-        self.image_DB = self.image_path + outputStruct[0] + '.png'
-        self.lidar_DB = self.lidar_path + outputStruct[0] + '.pcd'
+        self.image_DB = join(self.image_path, outputStruct[0] + '.png')
+        self.lidar_DB = join(self.lidar_path, outputStruct[0] + '.pcd')
         self.gt_x_db = float(outputStruct[1]) # 후보 이미지의 groundtruth x
         self.gt_y_db = float(outputStruct[2]) # 후보 이미지의 groundtruth y
         self.gt_theta_db = float(outputStruct[3]) # 후보 이미지의 groundtruth theta
@@ -149,7 +155,7 @@ class PoseEstimation:
         print('Total time taken : ' + str(elapsed_time) + 'ms')
         return est_x, est_y, est_theta
 
-def initial_pose_estimation(image = None, lidar = None, cuda = True, seed = 123, dataset = 'iiclab', resume = '../runsPath/Apr22_17-03-05_vgg16_netvlad/'):
+def initial_pose_estimation(image = None, lidar = None, cuda = True, seed = 123, dataset = 'iiclab', resume = join(root, 'runsPath', 'Apr22_17-03-05_vgg16_netvlad')):
     if cuda and not torch.cuda.is_available():
         raise Exception("No GPU found, please run with cuda = False")
 
@@ -161,7 +167,7 @@ def initial_pose_estimation(image = None, lidar = None, cuda = True, seed = 123,
     if cuda:
         torch.cuda.manual_seed(seed)
 
-    dataset_type = Dataset('../../data', dataset)
+    dataset_type = Dataset(dataset)
     print('===> Loading dataset(s)')
     whole_test_set = dataset_type.get_DB_test_set()
     print('===> Building model')
@@ -177,7 +183,7 @@ def initial_pose_estimation(image = None, lidar = None, cuda = True, seed = 123,
 
     net_vlad = netvlad.NetVLAD(num_clusters=64, dim=encoder_dim, vladv2=False)
 
-    initcache = join("../../dataPath", 'centroids', "vgg16" + '_' + dataset + '_' + str(64) +'_desc_cen.hdf5')
+    initcache = join(root, 'dataPath', 'centroids', "vgg16" + '_' + dataset + '_' + str(64) +'_desc_cen.hdf5')
 
     if not exists(initcache):
         raise FileNotFoundError('Could not find clusters, please run with cluster.py before proceeding')
@@ -202,7 +208,7 @@ def initial_pose_estimation(image = None, lidar = None, cuda = True, seed = 123,
         print("=> no checkpoint found at '{}'".format(resume_ckpt))
 
     model.eval()
-    dbFeat = np.array(loadFeature('../../feature/dbFeature_' + dataset + '.npy'), dtype=np.float32)
+    dbFeat = np.array(loadFeature(root, 'feature', 'dbFeature_' + dataset + '.npy'), dtype=np.float32)
 
     with torch.no_grad():
         print('====> Extracting Features')
@@ -226,7 +232,7 @@ def initial_pose_estimation(image = None, lidar = None, cuda = True, seed = 123,
     # for each query get those within threshold distance
     gt = whole_test_set.getPositives()
     correct_at_n = np.zeros(len(n_values))
-    output_Struct = Struct('../../data', dataset)
+    output_Struct = Struct(dataset)
     #TODO can we do this on the matrix in one go?
     for qIx, pred in enumerate(predictions):
         for i,n in enumerate(n_values):
@@ -239,9 +245,9 @@ def initial_pose_estimation(image = None, lidar = None, cuda = True, seed = 123,
                     output_Struct.append(timestamp=timestamp)
                 break
 
-    pe = PoseEstimation(image, lidar, output_Struct.get(), '../../data', dataset)
-    est_x_c, est_y_c, est_theta_c= pe.fivePointRANSAC() # return image_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
-    est_x_l, est_y_l, est_theta_l= pe.icp() # return lidar_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
+    pe = PoseEstimation(output_Struct.get(), dataset)
+    est_x_c, est_y_c, est_theta_c= pe.fivePointRANSAC(image) # return image_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
+    est_x_l, est_y_l, est_theta_l= pe.icp(lidar) # return lidar_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta
 
     # 람다 = 0.9
     lambda_value = 0.9

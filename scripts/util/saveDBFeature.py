@@ -1,6 +1,7 @@
 from __future__ import print_function
 import argparse
 import random
+from pathlib import Path
 from os.path import join, isfile
 
 import torch
@@ -11,10 +12,13 @@ import torchvision.models as models
 
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-import load as dataset
 import numpy as np
-import scripts.netvlad as netvlad
+
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+import netvlad as netvlad
+from util.load import Dataset
+
+root = Path(__file__).parent.parent.parent
 
 parser = argparse.ArgumentParser(description='Extracting DB Feature')
 parser.add_argument('--cacheBatchSize', type=int, default=1, help='Batch size for caching and testing')
@@ -47,7 +51,7 @@ def saveFeature(eval_set):
 
             del input, image_encoding, vlad_encoding
     del test_data_loader
-    np.save('../../feature/dbFeature_' + opt.dataset, dbFeat)
+    np.save(join(root, 'feature', 'dbFeature_' + opt.dataset), dbFeat)
     print('Save DB Feature successfully')
 
 if __name__ == "__main__":
@@ -64,12 +68,8 @@ if __name__ == "__main__":
     if cuda:
         torch.cuda.manual_seed(opt.seed)
 
-    if opt.dataset == 'gazebo':
-        whole_test_set = dataset.get_gazebo_DB_test_set()
-    elif opt.dataset == 'NIA':
-        whole_test_set = dataset.get_DB_test_set()
-    elif opt.dataset == 'iiclab':
-        whole_test_set = dataset.get_iiclab_DB_test_set()
+    dataset = Dataset(opt.dataset)
+    whole_test_set = dataset.get_DB_test_set()
 
     # default opt.fromscratch = False
     pretrained = not opt.fromscratch

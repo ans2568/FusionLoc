@@ -13,9 +13,11 @@ import torchvision.models as models
 import h5py
 import faiss
 import numpy as np
+from pathlib import Path
 
-import util.load as dataset
+from util.load import Dataset
 
+root = Path(__file__).parent.parent
 
 parser = argparse.ArgumentParser(description='Get cluster using NetVLAD encoder')
 parser.add_argument('--cacheBatchSize', type=int, default=24, help='Batch size for caching and testing')
@@ -23,7 +25,7 @@ parser.add_argument('--nGPU', type=int, default=1, help='number of GPU to use.')
 parser.add_argument('--nocuda', action='store_true', help='Dont use cuda')
 parser.add_argument('--threads', type=int, default=8, help='Number of threads for each data loader to use')
 parser.add_argument('--seed', type=int, default=123, help='Random seed to use.')
-parser.add_argument('--dataPath', type=str, default='../dataPath/', help='Path for centroid data.')
+parser.add_argument('--dataPath', type=str, default=join(root, 'dataPath'), help='Path for centroid data.')
 parser.add_argument('--arch', type=str, default='vgg16', 
         help='basenetwork to use', choices=['vgg16', 'alexnet'])
 parser.add_argument('--num_clusters', type=int, default=64, help='Number of NetVlad clusters. Default=64')
@@ -107,12 +109,8 @@ if __name__ == "__main__":
     if cuda:
         torch.cuda.manual_seed(opt.seed)
 
-    if opt.dataset == 'gazebo':
-        whole_train_set = dataset.get_gazebo_whole_training_set(onlyDB=True)
-    elif opt.dataset == 'NIA':
-        whole_train_set = dataset.get_whole_training_set(onlyDB=True)
-    elif opt.dataset == 'iiclab':
-        whole_train_set = dataset.get_iiclab_whole_training_set(onlyDB=True)
+    dataset = Dataset(dataset=opt.dataset)
+    whole_train_set = dataset.get_whole_training_set(onlyDB=True)
 
     pretrained = not opt.fromscratch
     if opt.arch.lower() == 'alexnet':
@@ -144,11 +142,11 @@ if __name__ == "__main__":
     encoder = nn.Sequential(*layers)
     model = nn.Module() 
     model.add_module('encoder', encoder)
-
     isParallel = False
     if opt.nGPU > 1 and torch.cuda.device_count() > 1:
         model.encoder = nn.DataParallel(model.encoder)
         isParallel = True
+    model = model.to(device)
 
     print('===> Calculating descriptors and clusters')
     get_clusters(whole_train_set)

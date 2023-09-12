@@ -2,6 +2,10 @@ import cv2
 import time
 import numpy as np
 import open3d as o3d
+from os.path import join
+from pathlib import Path
+
+root = Path(__file__).parent.parent
 
 class RootSIFT:
 	def __init__(self):
@@ -35,19 +39,12 @@ def to2Dcloud(points):
 
 class PoseEstimation:
     def __init__(self, inputStruct, outputStruct, dataset):
-        if dataset == 'gazebo':
-            self.image_path = '../data/gazebo_dataset/camera/'
-            self.lidar_path = '../data/gazebo_dataset/lidar/'
-        elif dataset == 'NIA':
-            self.image_path = '../data/NIA/camera/'
-            self.lidar_path = '../data/NIA/lidar/'
-        elif dataset == 'iiclab':
-            self.image_path = '../data/iiclab_real/camera/'
-            self.lidar_path = '../data/iiclab_real/lidar/'
+        self.image_path = join(root, 'data', dataset, 'camera')
+        self.lidar_path = join(root, 'data', dataset, 'lidar')
         # inputStruct는 2차원 배열
         # [time, gt_x, gt_y, gt_theta, image_path, lidar_path]
-        self.image_Query = self.image_path + inputStruct[0][0] + '.png'
-        self.lidar_Query = self.lidar_path + inputStruct[0][0] + '.pcd'
+        self.image_Query = join(self.image_path, inputStruct[0][0] + '.png')
+        self.lidar_Query = join(self.lidar_path, inputStruct[0][0] + '.pcd')
         self.gt_x = float(inputStruct[0][1]) # 입력 이미지의 groundtruth x
         self.gt_y = float(inputStruct[0][2]) # 입력 이미지의 groundtruth y
         self.gt_theta = float(inputStruct[0][3]) # 입력 이미지의 groundtruth theta
@@ -56,8 +53,8 @@ class PoseEstimation:
                                 [0.0, 0.0, 1.0]])
         # outputStruct는 리스트
         # [time, gt_x, gt_y, gt_theta, image_path, lidar_path]
-        self.image_DB = self.image_path + outputStruct[0] + '.png'
-        self.lidar_DB = self.lidar_path + outputStruct[0] + '.pcd'
+        self.image_DB = join(self.image_path, outputStruct[0] + '.png')
+        self.lidar_DB = join(self.lidar_path, outputStruct[0] + '.pcd')
         self.gt_x_db = float(outputStruct[1]) # 후보 이미지의 groundtruth x
         self.gt_y_db = float(outputStruct[2]) # 후보 이미지의 groundtruth y
         self.gt_theta_db = float(outputStruct[3]) # 후보 이미지의 groundtruth theta
