@@ -3,7 +3,6 @@ import csv
 import argparse
 
 import cv2
-import math
 import numpy as np
 import open3d as o3d
 from datetime import datetime

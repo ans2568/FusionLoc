@@ -6,7 +6,6 @@ from os.path import join, exists, isfile
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
@@ -16,14 +15,16 @@ import h5py
 import faiss
 
 from scripts.Struct import Struct
-import util.load as dataset
-from util.load import loadFeature
+from util.load import Dataset, loadFeature
 from scripts.pose_estimation import PoseEstimation
+import scripts.netvlad as netvlad
 
 import csv
 import time
 import numpy as np
-import scripts.netvlad as netvlad
+from pathlib import Path
+
+root = Path(__file__).parent.parent
 
 parser = argparse.ArgumentParser(description='Initial Pose Estimation using NetVLAD')
 parser.add_argument('--cacheBatchSize', type=int, default=1, help='Batch size for caching and testing')
@@ -31,7 +32,7 @@ parser.add_argument('--nGPU', type=int, default=1, help='number of GPU to use.')
 parser.add_argument('--nocuda', action='store_true', help='Dont use cuda')
 parser.add_argument('--threads', type=int, default=1, help='Number of threads for each data loader to use')
 parser.add_argument('--seed', type=int, default=123, help='Random seed to use.')
-parser.add_argument('--dataPath', type=str, default='../dataPath/', help='Path for centroid data.')
+parser.add_argument('--dataPath', type=str, default=join(root, 'dataPath'), help='Path for centroid data.')
 parser.add_argument('--resume', type=str, default='', help='Path to load checkpoint from, for resuming training or testing.')
 parser.add_argument('--ckpt', type=str, default='latest', 
         help='Resume from latest or best checkpoint.', choices=['latest', 'best'])
@@ -50,7 +51,7 @@ def test(eval_set):
 
     model.eval()
     loading_time = time.time()
-    dbFeat = np.array(loadFeature('../feature/dbFeature_' + opt.dataset + '.npy'), dtype=np.float32)
+    dbFeat = np.array(loadFeature(join(root, 'feature', 'dbFeature_' + opt.dataset + '.npy')), dtype=np.float32)
     with torch.no_grad():
         print('====> Extracting Features')
         pool_size = encoder_dim
@@ -82,26 +83,24 @@ def test(eval_set):
         query_timestamp = None
         input_Struct = Struct(eval_set.dataset)
         output_Struct = Struct(eval_set.dataset)
+        path = join(root, 'data', eval_set.dataset)
         if eval_set.dataset == 'gazebo':
             query_timestamp = image[-18:-4]
             input_Struct.append(query_timestamp)
-            path = '../data/gazebo_dataset'
         elif eval_set.dataset == 'NIA':
             query_timestamp = image[-22:-4]
             input_Struct.append(query_timestamp)
-            path = '../data/NIA'
         elif eval_set.dataset == 'iiclab':
             query_timestamp = image[-18:-4]
             input_Struct.append(query_timestamp)
-            path = '../data/iiclab_real/'
-        input_img = path + image
+        input_img = join(path, image)
         img = Image.open(input_img)
         tf = transforms.Compose([transforms.ToTensor()])
         img = tf(img)
         input_img = transforms.ToPILImage()(img)
-        if not exists('../prediction/' + eval_set.dataset):
-            makedirs('../prediction/' + eval_set.dataset)
-        input_img.save("../prediction/" + eval_set.dataset + "/input_" + str(query_timestamp) + ".png")
+        if not exists(join(root, 'prediction', eval_set.dataset)):
+            makedirs(join(root, 'prediction', eval_set.dataset))
+        input_img.save(join(root, 'prediction', eval_set.dataset, 'input_' + str(query_timestamp) + '.png'))
 
         n_values = [1] # 해당 값이 이미지 출력 개수와 동일
         qFeature = qFeat[idx][np.newaxis, :]
@@ -167,13 +166,13 @@ def test(eval_set):
                 est_timestamp = str(final_data[min_index_l][0]) # 라이다의 유클리디안 거리 중 실제 값과 차이가 가장 작은 인덱스의 timestamp
 
                 # 람다 = 0.9
-                lambda_value = 0.6
+                lambda_value = 0.9
                 est_final_x = lambda_value*est_x_l + (1-lambda_value)*est_x_c # 최종 포즈 x
                 est_final_y = lambda_value*est_y_l + (1-lambda_value)*est_y_c # 최종 포즈 y
                 est_final_theta = lambda_value*est_theta_l + (1-lambda_value)*est_theta_c # 최종 포즈 theta
 
             # input_groundtruth.csv : 입력 데이터에 대한 timestamp와 실제 lidar pose와 camera pose에 대한 정보를 행으로 갖고 있는 csv 파일
-            result_filename = '../result/result_' + opt.dataset + "_" + str(lambda_value) + '.csv'
+            result_filename = join(root, 'result', 'result_' + opt.dataset + "_" + str(lambda_value) + '.csv')
             header_input = ['input_timestamp', 'output_timestamp', 'input_X', 'output_X', 'input_Y',
                             'output_Y', 'input_theta', 'output_theta', 'difference_X(m)', 'difference_Y(m)',
                             'difference_theta(radian)', 'error_Position_L2 norm(m)', 'error_Orientation(degree)']
@@ -211,13 +210,9 @@ if __name__ == "__main__":
     if cuda:
         torch.cuda.manual_seed(opt.seed)
 
+    dataset = Dataset(opt.dataset)
     print('===> Loading dataset(s)')
-    if opt.dataset == 'gazebo':
-        whole_test_set = dataset.get_gazebo_Query_test_set()
-    elif opt.dataset == 'NIA':
-        whole_test_set = dataset.get_Query_test_set()
-    elif opt.dataset == 'iiclab':
-        whole_test_set = dataset.get_iiclab_Query_test_set()
+    whole_test_set = dataset.get_Query_test_set()
     print('===> Evaluating on test set')
     print('====> Query count:', whole_test_set.dbStruct.numQ)
     print('===> Building model')
