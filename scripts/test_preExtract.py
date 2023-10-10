@@ -14,10 +14,10 @@ import torchvision.models as models
 import h5py
 import faiss
 
-from scripts.Struct import Struct
+from Struct import Struct
 from util.load import Dataset, loadFeature
-from scripts.pose_estimation import PoseEstimation
-import scripts.netvlad as netvlad
+from pose_estimation import PoseEstimation
+import netvlad as netvlad
 
 import csv
 import time
