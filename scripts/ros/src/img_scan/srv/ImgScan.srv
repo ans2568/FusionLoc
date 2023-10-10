@@ -1,0 +1,6 @@
+sensor_msgs/CompressedImage image
+sensor_msgs/LaserScan scan
+---
+float64 x
+float64 y
+float64 theta
