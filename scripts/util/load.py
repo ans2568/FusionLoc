@@ -47,7 +47,10 @@ class Dataset():
 
     def get_whole_test_set(self):
         dbFile = join(self.csv_dir, 'test_db_data.csv')
-        queryFile = join(self.csv_dir, 'test_query_one_data.csv')
+        if (self.dataset == 'NIA'):
+            queryFile = join(self.csv_dir, 'test_query_data.csv')
+        else:
+            queryFile = join(self.csv_dir, 'test_query_one_data.csv')
         return WholeDatasetFromStruct(self.dir, dbFile, queryCSVFile=queryFile,
                                 input_transform=input_transform(), dataset=self.dataset)
 
@@ -59,7 +62,10 @@ class Dataset():
 
     def get_Query_test_set(self):
         dbFile = join(self.csv_dir, 'test_db_data.csv')
-        queryFile = join(self.csv_dir, 'test_query_one_data.csv')
+        if (self.dataset == 'NIA'):
+            queryFile = join(self.csv_dir, 'test_query_data.csv')
+        else:
+            queryFile = join(self.csv_dir, 'test_query_one_data.csv')
         return WholeDatasetFromStruct(self.dir, dbFile, queryCSVFile=queryFile,
                                 input_transform=input_transform(), dataset=self.dataset, onlyQuery=True)
 
@@ -232,7 +238,7 @@ def collate_fn(batch):
     return query, positive, negatives, negCounts, indices
 
 class QueryDatasetFromStruct(data.Dataset):
-    def __init__(self, data_dir, dbCSVFile, queryCSVFile, nNegSample=50, nNeg=2, margin=0.1, input_transform=None, dataset='NIA'):
+    def __init__(self, data_dir, dbCSVFile, queryCSVFile, nNegSample=5, nNeg=2, margin=0.1, input_transform=None, dataset='NIA'):
         super().__init__()
 
         self.data_dir = data_dir
