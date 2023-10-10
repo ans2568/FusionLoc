@@ -171,3 +171,8 @@ settings.json
 *.npy
 *.txt
 *.db
+scripts/netvlad_result_two.py
+scripts/Struct_two.py
+
+scripts/ros/install/
+scripts/ros/log/
