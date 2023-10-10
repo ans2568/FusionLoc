@@ -331,7 +331,7 @@ if __name__ == "__main__":
             p=2, reduction='sum').to(device)
 
     print('===> Training model')
-    writer = SummaryWriter(log_dir=join(opt.runsPath, datetime.now().strftime('%b%d_%H-%M-%S')+'_'+opt.arch+'_'+opt.pooling))
+    writer = SummaryWriter(log_dir=join(opt.runsPath, datetime.now().strftime('%b%d_%H-%M-%S')+'_'+opt.arch+'_'+opt.pooling+'_'+opt.dataset))
 
     # write checkpoints in logdir
     logdir = writer.file_writer.get_logdir()
