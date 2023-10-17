@@ -176,3 +176,6 @@ scripts/Struct_two.py
 
 scripts/ros/install/
 scripts/ros/log/
+data/**/*.png
+data/**/*.mp4
+data/**/*.nvm

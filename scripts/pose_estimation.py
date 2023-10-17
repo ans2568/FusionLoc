@@ -41,6 +41,8 @@ class PoseEstimation:
     def __init__(self, inputStruct, outputStruct, dataset):
         self.image_path = join(root, 'data', dataset, 'camera')
         self.lidar_path = join(root, 'data', dataset, 'lidar')
+        if dataset == 'KingsCollege':
+              self.image_path = join(root, 'data', dataset)
         # inputStruct는 2차원 배열
         # [time, gt_x, gt_y, gt_theta, image_path, lidar_path]
         self.image_Query = join(self.image_path, inputStruct[0][0] + '.png')
@@ -102,7 +104,8 @@ class PoseEstimation:
 
         # Fundamental Matrix 추정
         _, mask = cv2.findFundamentalMat(src_pts, dst_pts, cv2.FM_RANSAC, 5)
-
+        if mask is None:
+            return self.image_DB, 0, 0, 0, 0, 0, 0
         src_pts = src_pts[mask.ravel() == 1]
         dst_pts = dst_pts[mask.ravel() == 1]
 

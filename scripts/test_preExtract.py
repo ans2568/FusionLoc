@@ -86,29 +86,30 @@ def test(eval_set):
         path = join(root, 'data', eval_set.dataset)
         if eval_set.dataset == 'gazebo':
             query_timestamp = image[-18:-4]
-            input_Struct.append(query_timestamp)
         elif eval_set.dataset == 'NIA':
             query_timestamp = image[-22:-4]
-            input_Struct.append(query_timestamp)
         elif eval_set.dataset == 'iiclab':
             query_timestamp = image[-18:-4]
-            input_Struct.append(query_timestamp)
-        input_img = join(path, image)
-        img = Image.open(input_img)
-        tf = transforms.Compose([transforms.ToTensor()])
-        img = tf(img)
-        input_img = transforms.ToPILImage()(img)
-        if not exists(join(root, 'prediction', eval_set.dataset)):
-            makedirs(join(root, 'prediction', eval_set.dataset))
-        input_img.save(join(root, 'prediction', eval_set.dataset, 'input_' + str(query_timestamp) + '.png'))
+        else:
+            query_timestamp = image[:-4]
+        input_Struct.append(query_timestamp)
+        # input_img = join(path, image)
+        # img = Image.open(input_img)
+        # tf = transforms.Compose([transforms.ToTensor()])
+        # img = tf(img)
+        # input_img = transforms.ToPILImage()(img)
+        # if not exists(join(root, 'prediction', eval_set.dataset)):
+        #     makedirs(join(root, 'prediction', eval_set.dataset))
+        # input_img.save(join(root, 'prediction', eval_set.dataset, 'input_' + str(query_timestamp) + '.png'))
 
-        n_values = [1] # 해당 값이 이미지 출력 개수와 동일
+        n_values = [1,2] # 해당 값이 이미지 출력 개수와 동일
         qFeature = qFeat[idx][np.newaxis, :]
         _, predictions = faiss_index.search(qFeature, max(n_values))
         # for each query get those within threshold distance
         gt = eval_set.getPositives_test(idx)
         correct_at_n = np.zeros(len(n_values))
         #TODO can we do this on the matrix in one go?
+        count = 0
         for qIx, pred in enumerate(predictions):
             for i,n in enumerate(n_values):
                 # if in top N then also in top NN, where NN > N
@@ -116,10 +117,12 @@ def test(eval_set):
                 if np.any(np.in1d(pred[:n], gt[qIx])):
                     correct_at_n[i:] += 1
                     for i, index in enumerate(pred[m]):
-                        img, timestamp = eval_set.get(index)
+                        if count < 1:
+                            img, timestamp = eval_set.get(index)
                         # output = transforms.ToPILImage()(img)
                         # output.save("../prediction/" + eval_set.dataset + "/output_" + str(timestamp) + "_" + str(index) + ".png")
-                        output_Struct.append(timestamp=timestamp)
+                            output_Struct.append(timestamp=timestamp)
+                        count += 1
                     break
         final_data = []
         for output in output_Struct.get():
@@ -145,6 +148,7 @@ def test(eval_set):
                 est_final_x = est_x_c # 최종 포즈 x
                 est_final_y = est_y_c # 최종 포즈 y
                 est_final_theta = est_theta_c # 최종 포즈 theta
+                lambda_value = 0
 
             elif opt.mode == 'both':
                 image_db, est_x_c, est_y_c, est_theta_c, diff_x_c, diff_y_c, diff_theta_c = pe.fivePointRANSAC() # return image_db, est_x, est_y, est_theta, diff_x, diff_y, diff_theta

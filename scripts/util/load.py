@@ -56,13 +56,16 @@ class Dataset():
 
     def get_DB_test_set(self):
         dbFile = join(self.csv_dir, 'test_db_data.csv')
-        queryFile = join(self.csv_dir, 'test_query_one_data.csv')
+        if self.dataset == 'NIA' or self.dataset == 'KingsCollege':
+            queryFile = join(self.csv_dir, 'test_query_data.csv')
+        else:
+            queryFile = join(self.csv_dir, 'test_query_one_data.csv')
         return WholeDatasetFromStruct(self.dir, dbFile, queryCSVFile=queryFile,
                                 input_transform=input_transform(), dataset=self.dataset, onlyDB=True)
 
     def get_Query_test_set(self):
         dbFile = join(self.csv_dir, 'test_db_data.csv')
-        if (self.dataset == 'NIA'):
+        if self.dataset == 'NIA' or self.dataset == 'KingsCollege':
             queryFile = join(self.csv_dir, 'test_query_data.csv')
         else:
             queryFile = join(self.csv_dir, 'test_query_one_data.csv')
@@ -98,7 +101,7 @@ def parse_dbStruct(db_path, query_path, dataset):
     dbImage = db_data['image_path'].tolist()
     utmDb = []
     for i in range(len(db_data)):
-        if dataset == 'iiclab':
+        if dataset == 'iiclab' or dataset == 'KingsCollege':
             utmDb.append([db_data.loc[i, 'x'], db_data.loc[i, 'y'], db_data.loc[i, 'qz']])
         else:
             utmDb.append([db_data.loc[i, 'GT_pose_x'], db_data.loc[i, 'GT_pose_y'], db_data.loc[i, 'GT_pose_theta']])
@@ -106,7 +109,7 @@ def parse_dbStruct(db_path, query_path, dataset):
     qImage = query_data['image_path'].tolist()
     utmQ = []
     for i in range(len(query_data)):
-        if dataset == 'iiclab':
+        if dataset == 'iiclab' or dataset == 'KingsCollege':
             utmQ.append([query_data.loc[i, 'x'], query_data.loc[i, 'y'], query_data.loc[i, 'qz']])
         else:
             utmQ.append([query_data.loc[i, 'GT_pose_x'], query_data.loc[i, 'GT_pose_y'], query_data.loc[i, 'GT_pose_theta']])
@@ -139,7 +142,7 @@ class WholeDatasetFromStruct(data.Dataset):
                 self.images = [join(data_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
                 if not onlyDB:
                     self.images += [join(data_dir, qIm[1:]) for qIm in self.dbStruct.qImage]
-        elif dataset == 'iiclab':
+        elif dataset == 'iiclab' or dataset == 'KingsCollege':
             if onlyQuery:
                 self.images = [join(data_dir, dbIm[:]) for dbIm in self.dbStruct.dbImage]
                 self.images += [join(data_dir, qIm[:]) for qIm in self.queryStruct.qImage]
@@ -183,6 +186,8 @@ class WholeDatasetFromStruct(data.Dataset):
                 path = path[-22:-4]
             elif self.dataset == 'iiclab':
                 path = path[-18:-4]
+            else:
+                path = path[-19:-4]
         return img, path
 
     def __len__(self):
@@ -238,7 +243,7 @@ def collate_fn(batch):
     return query, positive, negatives, negCounts, indices
 
 class QueryDatasetFromStruct(data.Dataset):
-    def __init__(self, data_dir, dbCSVFile, queryCSVFile, nNegSample=5, nNeg=2, margin=0.1, input_transform=None, dataset='NIA'):
+    def __init__(self, data_dir, dbCSVFile, queryCSVFile, nNegSample=1000, nNeg=10, margin=0.1, input_transform=None, dataset='NIA'):
         super().__init__()
 
         self.data_dir = data_dir
@@ -257,15 +262,15 @@ class QueryDatasetFromStruct(data.Dataset):
         knn.fit(self.dbStruct.utmDb)
 
         # TODO use sqeuclidean as metric?
-        self.nontrivial_positives = list(knn.radius_neighbors(self.dbStruct.utmQ,
+        self.nontrivial_positives = list(knn.radius_neighbors(self.dbStruct.utmQ,	# utmDB와 가장 근접한 utmQ를 찾음
                 radius=self.dbStruct.nonTrivPosDistSqThr**0.5, 
                 return_distance=False))
         # radius returns unsorted, sort once now so we dont have to later
         for i,posi in enumerate(self.nontrivial_positives):
-            self.nontrivial_positives[i] = np.sort(posi)
+            self.nontrivial_positives[i] = np.sort(posi)	# 가장 중요한 positive 리스트에 대해 정렬
         # its possible some queries don't have any non trivial potential positives
         # lets filter those out
-        self.queries = np.where(np.array([len(x) for x in self.nontrivial_positives])>0)[0]
+        self.queries = np.where(np.array([len(x) for x in self.nontrivial_positives])>0)[0]	# 가장 거리가 가까운 쿼리 이미지들
         # potential negatives are those outside of posDistThr range
         potential_positives = knn.radius_neighbors(self.dbStruct.utmQ,
                 radius=self.dbStruct.posDistThr, 
@@ -284,9 +289,9 @@ class QueryDatasetFromStruct(data.Dataset):
         with h5py.File(self.cache, mode='r') as h5: 
             h5feat = h5.get("features")
 
-            # qOffset = self.dbStruct.numDb 
-            # qFeat = h5feat[index+qOffset]
-            qFeat = h5feat[index]
+            qOffset = self.dbStruct.numDb 
+            qFeat = h5feat[index+qOffset]
+            # qFeat = h5feat[index]
             posFeat = h5feat[self.nontrivial_positives[index].tolist()]
             knn = NearestNeighbors(n_jobs=-1) # TODO replace with faiss?
             knn.fit(posFeat)
@@ -318,7 +323,7 @@ class QueryDatasetFromStruct(data.Dataset):
         if self.dataset == 'gazebo' or self.dataset == 'NIA':
             query = Image.open(join(self.data_dir, self.dbStruct.qImage[index][1:]))
             positive = Image.open(join(self.data_dir, self.dbStruct.dbImage[posIndex][1:]))
-        elif self.dataset == 'iiclab':
+        elif self.dataset == 'iiclab' or self.dataset == 'KingsCollege':
             query = Image.open(join(self.data_dir, self.dbStruct.qImage[index][:]))
             positive = Image.open(join(self.data_dir, self.dbStruct.dbImage[posIndex][:]))
 
@@ -330,7 +335,7 @@ class QueryDatasetFromStruct(data.Dataset):
         for negIndex in negIndices:
             if self.dataset == 'gazebo' or self.dataset == 'NIA':
                 negative = Image.open(join(self.data_dir, self.dbStruct.dbImage[negIndex][1:]))
-            elif self.dataset == 'iiclab':
+            elif self.dataset == 'iiclab' or self.dataset == 'KingsCollege':
                 negative = Image.open(join(self.data_dir, self.dbStruct.dbImage[negIndex][:]))
             if self.input_transform:
                 negative = self.input_transform(negative)
