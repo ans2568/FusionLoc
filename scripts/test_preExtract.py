@@ -90,8 +90,10 @@ def test(eval_set):
             query_timestamp = image[-22:-4]
         elif eval_set.dataset == 'iiclab':
             query_timestamp = image[-18:-4]
-        else:
+        elif eval_set.dataset == 'KingsCollege':
             query_timestamp = image[:-4]
+        else:
+            query_timestamp = image[:-10]
         input_Struct.append(query_timestamp)
         # input_img = join(path, image)
         # img = Image.open(input_img)
@@ -102,7 +104,7 @@ def test(eval_set):
         #     makedirs(join(root, 'prediction', eval_set.dataset))
         # input_img.save(join(root, 'prediction', eval_set.dataset, 'input_' + str(query_timestamp) + '.png'))
 
-        n_values = [1,2] # 해당 값이 이미지 출력 개수와 동일
+        n_values = [1] # 해당 값이 이미지 출력 개수와 동일
         qFeature = qFeat[idx][np.newaxis, :]
         _, predictions = faiss_index.search(qFeature, max(n_values))
         # for each query get those within threshold distance

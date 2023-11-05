@@ -43,6 +43,10 @@ class PoseEstimation:
         self.lidar_path = join(root, 'data', dataset, 'lidar')
         if dataset == 'KingsCollege':
               self.image_path = join(root, 'data', dataset)
+        elif dataset == '7_scenes':
+              self.image_path = join(root, 'data', dataset)
+              inputStruct[0][0] += '.color'
+              outputStruct[0] += '.color'
         # inputStruct는 2차원 배열
         # [time, gt_x, gt_y, gt_theta, image_path, lidar_path]
         self.image_Query = join(self.image_path, inputStruct[0][0] + '.png')
@@ -72,7 +76,6 @@ class PoseEstimation:
 
     def fivePointRANSAC(self):
         start = time.time()
-
         img_Query = cv2.imread(self.image_Query)
         img_DB = cv2.imread(self.image_DB)
         if img_Query is None or img_DB is None:
