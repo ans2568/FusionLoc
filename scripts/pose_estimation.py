@@ -105,13 +105,6 @@ class PoseEstimation:
         src_pts = np.float32([keypoints1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
         dst_pts = np.float32([keypoints2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
 
-        # Fundamental Matrix 추정
-        _, mask = cv2.findFundamentalMat(src_pts, dst_pts, cv2.FM_RANSAC, 5)
-        if mask is None:
-            return self.image_DB, 0, 0, 0, 0, 0, 0
-        src_pts = src_pts[mask.ravel() == 1]
-        dst_pts = dst_pts[mask.ravel() == 1]
-
         E, _ = cv2.findEssentialMat(src_pts, dst_pts, self.camera_matrix, cv2.RANSAC)
 
         _, R, t, _ = cv2.recoverPose(E, src_pts, dst_pts, cameraMatrix=self.camera_matrix)
