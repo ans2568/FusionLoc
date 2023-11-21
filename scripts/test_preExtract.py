@@ -197,7 +197,7 @@ def test(eval_set):
                 with open(result_filename, mode='a', newline='') as file:
                     csv_writer = csv.writer(file)
                     csv_writer.writerow(result)
-            print("Check the experiment results in the " + result_filename)
+        print("Check the experiment results in the " + result_filename)
 
 if __name__ == "__main__":
     start_time = time.time()

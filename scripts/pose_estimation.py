@@ -84,12 +84,36 @@ class PoseEstimation:
         img_query = cv2.cvtColor(img_Query, cv2.COLOR_BGR2GRAY)
         img_db = cv2.cvtColor(img_DB, cv2.COLOR_BGR2GRAY)
 
+        # ---
+        # # Initialize FAST detector
+        # fast = cv2.FastFeatureDetector_create()
+
+        # # Detect keypoints with FAST
+        # keypoints1 = fast.detect(img_query, None)
+        # keypoints2 = fast.detect(img_db, None)
+
+        # # Initialize ORB descriptor
+        # orb = cv2.ORB_create()
+
+        # # Compute descriptors with ORB
+        # keypoints1, descriptors1 = orb.compute(img_query, keypoints1)
+        # keypoints2, descriptors2 = orb.compute(img_db, keypoints2)
+        # ---
+        # ---
+        # sift = cv2.xfeatures2d.SURF_create()
+        # keypoints1, descriptors1 = sift.detectAndCompute(img_query, None)
+        # keypoints2, descriptors2 = sift.detectAndCompute(img_db, None)
+        # descriptors1= descriptors1.astype(np.float32)
+        # descriptors2= descriptors2.astype(np.float32)
+        # ---
+        # ---
         rs = RootSIFT()
         keypoints1, descriptors1 = rs.compute(image=img_query)
         keypoints2, descriptors2 = rs.compute(image=img_db)
 
         descriptors1= descriptors1.astype(np.float32)
         descriptors2= descriptors2.astype(np.float32)
+        # ---
 
         # BF Matcher 초기화
         bf = cv2.BFMatcher()

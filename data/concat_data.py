@@ -27,8 +27,8 @@ if dataset == '7_scenes':
         input_file = os.path.join(dataset, 'csv', file_name + str(i) + csv_format)
         file_list.append(input_file)
 else:
-    input_file = os.path.join(dataset, 'csv', 'test_db_data' + csv_format)
-    input_file2 = os.path.join(dataset, 'csv', 'test_query_data' + csv_format)
+    input_file = os.path.join(dataset, 'csv', 'test_data' + csv_format)
+    input_file2 = os.path.join(dataset, 'csv', 'train_data' + csv_format)
     file_list.append(input_file)
     file_list.append(input_file2)
 
