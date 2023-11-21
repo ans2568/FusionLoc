@@ -1,0 +1,20 @@
+{
+    "7_scenes" : {
+        "posDistThr" : 0.7,
+        "nonTrivPosDistSqThr" : 1,
+        "nNegSample" : 5,
+        "nNeg" : 2
+    }, 
+    "KingsCollege" : {
+        "posDistThr": 3,
+        "nonTrivPosDistSqThr": 5,
+        "nNegSample": 1000,
+        "nNeg": 10
+    },
+    "NIA": {
+        "posDistThr": 3,
+        "nonTrivPosDistSqThr": 5,
+        "nNegSample": 50,
+        "nNeg": 2
+    }
+}
