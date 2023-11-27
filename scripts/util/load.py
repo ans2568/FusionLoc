@@ -3,6 +3,7 @@ import torchvision.transforms as transforms
 import torch.utils.data as data
 
 import os
+import json
 import numpy as np
 from pathlib import Path
 from os.path import join, exists
@@ -14,6 +15,18 @@ from sklearn.neighbors import NearestNeighbors
 import h5py
 
 root = Path(__file__).parent.parent.parent
+
+def load_params(dataset):
+    with open('parameter.json', 'r') as file:
+        json_data = json.load(file)
+        params = json_data[dataset]
+    posDistThr = params['posDistThr']
+    nonTrivPosDistSqThr = params['nonTrivPosDistSqThr']
+    nNegSample = params['nNegSample']
+    nNeg = params['nNeg']
+    start = params['start']
+    end = params['end']
+    return posDistThr, nonTrivPosDistSqThr, nNegSample, nNeg, start, end
 
 def loadFeature(file=join(root, 'feature', 'dbFeature.npy')):
     if not os.path.exists(file):
@@ -31,6 +44,7 @@ def input_transform():
 class Dataset():
     def __init__(self, dataset):
         self.dataset = dataset
+        self.posDistThr, self.nonTrivPosDistSqThr, self.nNegSample, self.nNeg, self.start, self.end = load_params(self.dataset)
         self.dir = join(root, 'data', dataset)
         if not exists(self.dir):
             raise FileNotFoundError(self.dir + ' is hardcoded, please adjust to point to custom dataset')
@@ -43,7 +57,7 @@ class Dataset():
         queryFile = join(self.csv_dir, 'train_query_data.csv')
         return WholeDatasetFromStruct(self.dir, dbFile, queryFile,
                                 input_transform=input_transform(),
-                                onlyDB=onlyDB, dataset=self.dataset)
+                                onlyDB=onlyDB, dataset=self.dataset, posDistThr=self.posDistThr, nonTrivPosDistSqThr=self.nonTrivPosDistSqThr, start=self.start, end=self.end)
 
     def get_whole_test_set(self):
         dbFile = join(self.csv_dir, 'test_db_data.csv')
@@ -52,7 +66,7 @@ class Dataset():
         else:
             queryFile = join(self.csv_dir, 'test_query_one_data.csv')
         return WholeDatasetFromStruct(self.dir, dbFile, queryCSVFile=queryFile,
-                                input_transform=input_transform(), dataset=self.dataset)
+                                input_transform=input_transform(), dataset=self.dataset, posDistThr=self.posDistThr, nonTrivPosDistSqThr=self.nonTrivPosDistSqThr, start=self.start, end=self.end)
 
     def get_DB_test_set(self):
         dbFile = join(self.csv_dir, 'test_db_data.csv')
@@ -61,7 +75,7 @@ class Dataset():
         else:
             queryFile = join(self.csv_dir, 'test_query_one_data.csv')
         return WholeDatasetFromStruct(self.dir, dbFile, queryCSVFile=queryFile,
-                                input_transform=input_transform(), dataset=self.dataset, onlyDB=True)
+                                input_transform=input_transform(), dataset=self.dataset, onlyDB=True, posDistThr=self.posDistThr, nonTrivPosDistSqThr=self.nonTrivPosDistSqThr, start=self.start, end=self.end)
 
     def get_Query_test_set(self):
         dbFile = join(self.csv_dir, 'test_db_data.csv')
@@ -70,25 +84,25 @@ class Dataset():
         else:
             queryFile = join(self.csv_dir, 'test_query_one_data.csv')
         return WholeDatasetFromStruct(self.dir, dbFile, queryCSVFile=queryFile,
-                                input_transform=input_transform(), dataset=self.dataset, onlyQuery=True)
+                                input_transform=input_transform(), dataset=self.dataset, onlyQuery=True, posDistThr=self.posDistThr, nonTrivPosDistSqThr=self.nonTrivPosDistSqThr, start=self.start, end=self.end)
 
     def get_whole_val_set(self):
         dbFile = join(self.csv_dir, 'val_db_data.csv')
         queryFile = join(self.csv_dir, 'val_query_data.csv')
         return WholeDatasetFromStruct(self.dir, dbFile, queryFile,
-                                input_transform=input_transform(), dataset=self.dataset)
+                                input_transform=input_transform(), dataset=self.dataset, posDistThr=self.posDistThr, nonTrivPosDistSqThr=self.nonTrivPosDistSqThr, start=self.start, end=self.end)
 
     def get_training_query_set(self, margin=0.1): # 학습할 때 사용하는 전체 데이터 셋(Query와 DB)
         dbFile = join(self.csv_dir, 'train_db_data.csv')
         queryFile = join(self.csv_dir, 'train_query_data.csv')
         return QueryDatasetFromStruct(self.dir, dbFile, queryFile,
-                                input_transform=input_transform(), margin=margin, dataset=self.dataset)
+                                input_transform=input_transform(), nNegSample=self.nNegSample, nNeg=self.nNeg, margin=margin, dataset=self.dataset, posDistThr=self.posDistThr, nonTrivPosDistSqThr=self.nonTrivPosDistSqThr)
 
 dbStruct = namedtuple('dbStruct', ['whichSet', 'dataset',
 	'dbImage', 'utmDb', 'qImage', 'utmQ', 'numDb', 'numQ',
 	'posDistThr', 'posDistSqThr', 'nonTrivPosDistSqThr'])
 
-def parse_dbStruct(db_path, query_path, dataset):
+def parse_dbStruct(db_path, query_path, dataset, distThr, nonTrivDistSqThr):
     # 해당 부분에서 csv파일로 읽을 수 있도록 변경하면 .mat파일 사용할 필요가 없음
     db_data = pd.read_csv(db_path, index_col=False)
     query_data = pd.read_csv(query_path, index_col=False)
@@ -117,23 +131,25 @@ def parse_dbStruct(db_path, query_path, dataset):
     numDb = len(db_data['image_path'])
     numQ = len(query_data['image_path'])
 
-    posDistThr = 3
+    posDistThr = distThr
     posDistSqThr = np.sqrt(posDistThr)
-    nonTrivPosDistSqThr = 5
+    nonTrivPosDistSqThr = nonTrivDistSqThr
 
     return dbStruct(whichSet, dataset, dbImage, utmDb, qImage, 
             utmQ, numDb, numQ, posDistThr, 
             posDistSqThr, nonTrivPosDistSqThr)
 
 class WholeDatasetFromStruct(data.Dataset):
-    def __init__(self, data_dir, dbCSVFile, queryCSVFile, input_transform=None, onlyDB=False, dataset='NIA', onlyQuery=False):
+    def __init__(self, data_dir, dbCSVFile, queryCSVFile, input_transform=None, onlyDB=False, dataset='NIA', onlyQuery=False, posDistThr=3, nonTrivPosDistSqThr=5, start=0, end=0):
         super().__init__()
         self.onlyQuery = onlyQuery
+        self.start = start
+        self.end = end
 
         self.input_transform = input_transform
 
-        self.dbStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset)
-        self.queryStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset)
+        self.dbStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset, posDistThr, nonTrivPosDistSqThr)
+        self.queryStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset, posDistThr, nonTrivPosDistSqThr)
         if dataset == 'gazebo' or dataset == 'NIA':
             if onlyQuery:
                 self.images = [join(data_dir, dbIm[1:]) for dbIm in self.dbStruct.dbImage]
@@ -180,16 +196,7 @@ class WholeDatasetFromStruct(data.Dataset):
         tf = transforms.Compose([transforms.ToTensor()])
         img = tf(img)
         if path.endswith(".png"):
-            if self.dataset == 'gazebo':
-                path = path[-18:-4]
-            elif self.dataset == 'NIA':
-                path = path[-22:-4]
-            elif self.dataset == 'iiclab':
-                path = path[-18:-4]
-            elif self.dataset == 'KingsCollege':
-                path = path[-19:-4]
-            else:
-                path = path[-29:-10]
+            path = path[self.start:self.end]
         return img, path
 
     def __len__(self):
@@ -245,14 +252,14 @@ def collate_fn(batch):
     return query, positive, negatives, negCounts, indices
 
 class QueryDatasetFromStruct(data.Dataset):
-    def __init__(self, data_dir, dbCSVFile, queryCSVFile, nNegSample=1000, nNeg=10, margin=0.1, input_transform=None, dataset='NIA'):
+    def __init__(self, data_dir, dbCSVFile, queryCSVFile, nNegSample=50, nNeg=2, margin=0.1, input_transform=None, dataset='NIA', posDistThr = 3, nonTrivPosDistSqThr = 5):
         super().__init__()
 
         self.data_dir = data_dir
         self.input_transform = input_transform
         self.margin = margin
 
-        self.dbStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset)
+        self.dbStruct = parse_dbStruct(dbCSVFile, queryCSVFile, dataset, posDistThr, nonTrivPosDistSqThr)
         self.whichSet = self.dbStruct.whichSet
         self.dataset = self.dbStruct.dataset
         self.nNegSample = nNegSample # number of negatives to randomly sample

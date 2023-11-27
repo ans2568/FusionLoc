@@ -3,18 +3,40 @@
         "posDistThr" : 0.7,
         "nonTrivPosDistSqThr" : 1,
         "nNegSample" : 5,
-        "nNeg" : 2
+        "nNeg" : 2,
+        "start" : -29,
+        "end" : -10
     }, 
     "KingsCollege" : {
         "posDistThr": 3,
         "nonTrivPosDistSqThr": 5,
         "nNegSample": 1000,
-        "nNeg": 10
+        "nNeg": 10,
+        "start": -19,
+        "end": -4
     },
     "NIA": {
         "posDistThr": 3,
         "nonTrivPosDistSqThr": 5,
         "nNegSample": 50,
-        "nNeg": 2
+        "nNeg": 2,
+        "start": -22,
+        "end": -4
+    },
+    "gazebo" : {
+        "posDistThr": 3,
+        "nonTrivPosDistSqThr": 5,
+        "nNegSample": 50,
+        "nNeg": 2,
+        "start": -18,
+        "end": -4
+    },
+    "iiclab" : {
+        "posDistThr": 3,
+        "nonTrivPosDistSqThr": 5,
+        "nNegSample": 50,
+        "nNeg": 2,
+        "start": -18,
+        "end": -4
     }
 }

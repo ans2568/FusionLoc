@@ -15,7 +15,7 @@ import h5py
 import faiss
 
 from Struct import Struct
-from util.load import Dataset, loadFeature
+from util.load import Dataset, loadFeature, load_params
 from pose_estimation import PoseEstimation
 import netvlad as netvlad
 
@@ -45,6 +45,7 @@ parser.add_argument('--dataset', type=str, default='NIA', help='select Dataset t
 parser.add_argument('--mode', type=str, default='both', help='select mode [camera, both]')
 
 def test(eval_set):
+    _, _, _, _, start, end = load_params(eval_set.dataset)
     # TODO what if features dont fit in memory? 
     test_data_loader = DataLoader(dataset=eval_set, num_workers=opt.threads, batch_size=opt.cacheBatchSize, 
                                   shuffle=False, pin_memory=cuda)
@@ -84,16 +85,10 @@ def test(eval_set):
         input_Struct = Struct(eval_set.dataset)
         output_Struct = Struct(eval_set.dataset)
         path = join(root, 'data', eval_set.dataset)
-        if eval_set.dataset == 'gazebo':
-            query_timestamp = image[-18:-4]
-        elif eval_set.dataset == 'NIA':
-            query_timestamp = image[-22:-4]
-        elif eval_set.dataset == 'iiclab':
-            query_timestamp = image[-18:-4]
-        elif eval_set.dataset == 'KingsCollege':
-            query_timestamp = image[:-4]
+        if eval_set.dataset == 'KingsCollege' or eval_set.dataset == '7_scenes':
+            query_timestamp = image[:end]
         else:
-            query_timestamp = image[:-10]
+            query_timestamp = image[start:end]
         input_Struct.append(query_timestamp)
         # input_img = join(path, image)
         # img = Image.open(input_img)
